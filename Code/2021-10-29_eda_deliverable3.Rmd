@@ -8,6 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(knitr)
+library(kableExtra)
 bat = read_csv('../Data/Clean/bat/bat_all.csv')
 pitch = read_csv('../Data/Clean/pitch/pitch_all.csv')
 ```
@@ -46,7 +47,7 @@ After scraping this raw data, I eliminated some extraneous columns from each fil
 
 *Disclaimer - this is less formal than it will appear in the final paper*
 
-```{r bat_player_summary, echo=FALSE}
+```{r bat_player_summary, echo=FALSE, message=FALSE}
 
 # Compiling some summary statistics
 
@@ -136,16 +137,130 @@ bat_player = tibble(
   SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_pa_min))
 )
 
-kable(
-  bat_player,
-  col.names = c("Measure", "*M*", "*SD*", "*M*", "*SD*"),
-  align = c("l", "c", "c", "c", "c"),
-  digits = 2,
-  caption = "Means and Standard Deviations of Batter Statistics ($n=X$)"
-  ) %>%
-  add_header_above(
-    header = c(" " = 1, "No PA Minimum" = 2, "Minimum of 20 PA" = 2)
-    )
+kable(bat_player,
+      col.names = c("Measure", "M", "SD", "M", "SD"),
+      align = c("l", "c", "c", "c", "c"),
+      digits = 2,
+      caption = "Means and Standard Deviations of Batter Statistics ($n=23,210$, $n_{min}=19,367$)",
+      booktabs = T) %>%
+  add_header_above(header = c(" " = 1,
+                              "No PA Minimum" = 2,
+                              "PA >= 20" = 2)) %>% 
+  footnote(general = "for PA minimum, player season only included if PA >= 20.",
+           general_title = "Note -",
+           footnote_as_chunk = TRUE) %>% 
+  kable_styling(latex_options = c("striped", "hold_position"))
 
 ```
 
+Above are the summary statistics for general player information, including the number of years played, organizations played for, and plate appearances per year. There are two different sets of statistics for each of these: one for the raw data, and one including only those player seasons where the hitter had at least twenty plate appearances, in order to exclude years with injuries or instances where pitchers had plate appearances. We see that when we exclude those seasons, we have about 4,000 fewer players in the data.
+
+From this table, we see that there is a wide range in key statistics across the player pool. Notably, the standard deviation for years played is nearly as large as the mean, indicating here that the distribution of years played is right-skewed, as would be expected in a population where many players have short careers but a select few play at the major league level for an extended period of time.
+
+```{r pitch_player_summary, echo=FALSE, message=FALSE}
+
+# Compiling some summary statistics
+
+# First getting a table w/ all years w/ >= 20 BF
+
+pitch_min_bf_20 <- pitch %>% 
+  group_by(Name, Year) %>% 
+  mutate(bf = sum(BF)) %>% 
+  filter(bf >= 20) %>% 
+  ungroup()
+
+# Number of players, both with minimums and without
+
+n_pitch <- pitch %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+n_pitch_min <- pitch_min_bf_20 %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played, both with minimums and without
+
+n_years <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+n_years_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for, both with minimums and without
+
+n_teams <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+n_teams_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at, both with minimums and without
+
+n_levels <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+n_levels_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of batters faced per year, both with minimums and without
+
+n_bf <- pitch %>% 
+  group_by(Name, Year) %>% 
+  summarize(bf = sum(BF)) %>% 
+  select(bf) %>% 
+  pull()
+
+n_bf_min <- pitch_min_bf_20 %>% 
+  group_by(Name, Year) %>% 
+  summarize(bf = sum(BF)) %>% 
+  select(bf) %>% 
+  pull()
+
+pitch_player = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "BF per Year"),
+  M_1  = c(mean(n_years), mean(n_teams), mean(n_levels), mean(n_bf, na.rm = TRUE)),
+  SD_1 = c(sd(n_years), sd(n_teams), sd(n_levels), sd(n_bf, na.rm = TRUE)),
+  M_2  = c(mean(n_years_min), mean(n_teams_min), mean(n_levels_min), mean(n_bf_min)),
+  SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_bf_min))
+)
+
+kable(pitch_player,
+      col.names = c("Measure", "M", "SD", "M", "SD"),
+      align = c("l", "c", "c", "c", "c"),
+      digits = 2,
+      caption = "Means and Standard Deviations of Pitcher Statistics ($n=22,219$, $n_{min}=19,677$)",
+      booktabs = T) %>%
+  add_header_above(header = c(" " = 1,
+                              "No BF Minimum" = 2,
+                              "BF >= 20" = 2)) %>% 
+  footnote(general = "for BF minimum, player season only included if BF >= 20.",
+           general_title = "Note -",
+           footnote_as_chunk = TRUE) %>% 
+  kable_styling(latex_options = c("striped", "hold_position"))
+
+```
+
+The above table replicates what was done with the batting summary statistics, but for pitchers. The trends here are remarkably similar to those seen in the table for hitters, in both total number of players and their individual metrics. One small difference is that pitchers on average play at slightly more levels than hitters, but this is not an extreme.
