@@ -130,11 +130,22 @@ n_pa_min <- bat_min_pa_20 %>%
 
 bat_player = tibble(
   Measure = c("Years Played", "Organizations", "Levels", "PA per Year"),
-  M_1  = c(mean(educ$peer), mean(educ$doc_accept), mean(educ$enroll)),
-  SD_1 = c(sd(educ$peer), sd(educ$doc_accept), sd(educ$enroll)),
-  M_2  = c(mean(educ$Lpeer), mean(educ$Ldoc_accept), mean(educ$Lenroll)),
-  SD_2 = c(sd(educ$Lpeer), sd(educ$Ldoc_accept), sd(educ$Lenroll))
+  M_1  = c(mean(n_years), mean(n_teams), mean(n_levels), mean(n_pa)),
+  SD_1 = c(sd(n_years), sd(n_teams), sd(n_levels), sd(n_pa)),
+  M_2  = c(mean(n_years_min), mean(n_teams_min), mean(n_levels_min), mean(n_pa_min)),
+  SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_pa_min))
 )
+
+kable(
+  bat_player,
+  col.names = c("Measure", "*M*", "*SD*", "*M*", "*SD*"),
+  align = c("l", "c", "c", "c", "c"),
+  digits = 2,
+  caption = "Means and Standard Deviations of Batter Statistics ($n=X$)"
+  ) %>%
+  add_header_above(
+    header = c(" " = 1, "No PA Minimum" = 2, "Minimum of 20 PA" = 2)
+    )
 
 ```
 
