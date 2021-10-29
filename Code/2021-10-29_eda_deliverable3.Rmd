@@ -7,44 +7,134 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(knitr)
 bat = read_csv('../Data/Clean/bat/bat_all.csv')
 pitch = read_csv('../Data/Clean/pitch/pitch_all.csv')
 ```
 
 ```{r arrange_data, include=FALSE}
 
-# Sorting the data so it looks prettier/easier to work with
+# Commenting this block out for now because we've already run it and modified the data 
 
-bat <- bat %>% 
-  arrange(Name, Age, Year, desc(PA), Level, Org) %>% 
-  distinct()
-
-pitch <- pitch %>% 
-  arrange(Name, Age, Year, desc(BF), Level, Org) %>% 
-  distinct()
-
-# Overwriting the existing data
-
-write_csv(bat, '../Data/Clean/bat/bat_all.csv')
-write_csv(pitch, '../Data/Clean/pitch/pitch_all.csv')
+# # Sorting the data so it looks prettier/easier to work with
+# 
+# bat <- bat %>% 
+#   arrange(Name, Age, Year, desc(PA), Level, Org) %>% 
+#   distinct()
+# 
+# pitch <- pitch %>% 
+#   arrange(Name, Age, Year, desc(BF), Level, Org) %>% 
+#   distinct()
+# 
+# # Overwriting the existing data
+# 
+# write_csv(bat, '../Data/Clean/bat/bat_all.csv')
+# write_csv(pitch, '../Data/Clean/pitch/pitch_all.csv')
 ```
 
-## R Markdown
+## Overview
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The data collected for this thesis was obtained from [Baseball Reference](https://www.baseball-reference.com), a website that contains historical data for minor and major league baseball. The data was scraped using Python, the code for which can be found in my [GitHub repository](https://github.com/tjhuffman4246/senior-thesis). It contains performance data in minor and major league baseball from 1998 through 2019 and is separated into batting and pitching data.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Format 
 
-```{r cars}
-summary(cars)
+The data was originally separated into thousands of different files by team, based on batting/pitching, year, level of baseball (e.g., Triple-A, MLB, etc.), and organization (i.e., the major league club of that baseball team). The data runs from 1998 through 2019, as 1998 was the first year in which MLB expanded to its current size of 30 organizations, and 2019 was the last full year of data available unaffected by the COVID-19 pandemic.
+
+After scraping this raw data, I eliminated some extraneous columns from each file, as data from minor league teams did not match the format of major league teams, and then combined them into two long files, one for batting data and another for pitching. These files contain statistics describing playing time, player performance, and team played for, with a unique row for each player at each level for each team in each year. This means that if somebody plays at multiple levels in the same year, or changes organizations, they will have multiple entries in a given year.
+
+## Data
+
+*Disclaimer - this is less formal than it will appear in the final paper*
+
+```{r bat_player_summary, echo=FALSE}
+
+# Compiling some summary statistics
+
+# First getting a table w/ all years w/ >= 20 PA
+
+bat_min_pa_20 <- bat %>% 
+  group_by(Name, Year) %>% 
+  mutate(pa = sum(PA)) %>% 
+  filter(pa >= 20) %>% 
+  ungroup()
+
+# Number of players, both with minimums and without
+
+n_bat <- bat %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+n_bat_min <- bat_min_pa_20 %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played, both with minimums and without
+
+n_years <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+n_years_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for, both with minimums and without
+
+n_teams <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+n_teams_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at, both with minimums and without
+
+n_levels <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+n_levels_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of plate appearances per year, both with minimums and without
+
+n_pa <- bat %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa = sum(PA)) %>% 
+  select(pa) %>% 
+  pull()
+
+n_pa_min <- bat_min_pa_20 %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa = sum(PA)) %>% 
+  select(pa) %>% 
+  pull()
+
+bat_player = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "PA per Year"),
+  M_1  = c(mean(educ$peer), mean(educ$doc_accept), mean(educ$enroll)),
+  SD_1 = c(sd(educ$peer), sd(educ$doc_accept), sd(educ$enroll)),
+  M_2  = c(mean(educ$Lpeer), mean(educ$Ldoc_accept), mean(educ$Lenroll)),
+  SD_2 = c(sd(educ$Lpeer), sd(educ$Ldoc_accept), sd(educ$Lenroll))
+)
+
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
