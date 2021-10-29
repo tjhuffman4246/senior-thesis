@@ -7,6 +7,26 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+bat = read_csv('../Data/Clean/bat/bat_all.csv')
+pitch = read_csv('../Data/Clean/pitch/pitch_all.csv')
+```
+
+```{r arrange_data, include=FALSE}
+
+# Sorting the data so it looks prettier/easier to work with
+
+bat <- bat %>% 
+  arrange(Name, Age, Year, desc(PA), Level, Org) %>% 
+  distinct()
+
+pitch <- pitch %>% 
+  arrange(Name, Age, Year, desc(BF), Level, Org) %>% 
+  distinct()
+
+# Overwriting the existing data
+
+write_csv(bat, '../Data/Clean/bat/bat_all.csv')
+write_csv(pitch, '../Data/Clean/pitch/pitch_all.csv')
 ```
 
 ## R Markdown
