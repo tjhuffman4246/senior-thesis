@@ -45,7 +45,7 @@ After scraping this raw data, I eliminated some extraneous columns from each fil
 
 ## Data
 
-*Disclaimer - this is less formal than it will appear in the final paper*
+*Disclaimer - this is significantly less formal than it will appear in the final paper.*
 
 ```{r bat_player_summary, echo=FALSE, message=FALSE}
 
@@ -264,3 +264,38 @@ kable(pitch_player,
 ```
 
 The above table replicates what was done with the batting summary statistics, but for pitchers. The trends here are remarkably similar to those seen in the table for hitters, in both total number of players and their individual metrics. One small difference is that pitchers on average play at slightly more levels than hitters, but this is not an extreme.
+
+There are many other summary statistics that will be included in the final paper - for example, the distribution of performance for players who are promoted, hazard rate, transition matrix, etc. - that were not included here. One variable of interest is how the number of players has increased year-over-year:
+
+```{r n_players, echo=FALSE, message=FALSE}
+
+# Getting number of unique players in each year, and joining into one dataframe
+
+bat_ct <- bat %>% 
+  group_by(Year) %>% 
+  summarize(ct = n_distinct(Name),
+            pos = 'bat')
+
+pitch_ct <- pitch %>% 
+  group_by(Year) %>% 
+  summarize(ct = n_distinct(Name),
+            pos = 'pitch')
+
+player_ct <- bat_ct %>% 
+  rbind(pitch_ct)
+
+# Plotting this via ggplot
+
+ggplot(player_ct, aes(x = Year, y = ct, color = pos)) +
+  geom_line() +
+  labs(x = "Year",
+       y = "Player Count",
+       title = "Professional Baseball Player Count, by Year",
+       caption = "Levels: Rookie, Short-Season A, Low-A, High-A, Double-A, Triple-A, MLB",
+       color = "Position") +
+  scale_y_continuous(breaks = seq(3000, 4500, by = 250)) +
+  theme_classic()
+
+```
+
+So we see that over the past two decades-plus, the number of pitchers in a given year has grown dramatically, a drastic increase that now outstrips that of the number of hitters per year.
