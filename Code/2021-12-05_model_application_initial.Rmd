@@ -1,0 +1,86 @@
+---
+title: "Thesis Modeling"
+author: "Tate Huffman"
+date: "12/05/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+bat = read_csv('../Data/Clean/bat/bat_all.csv')
+pitch = read_csv('../Data/Clean/pitch/pitch_all.csv')
+```
+
+## Model Setup
+
+This first regression is minimizing the objective function
+
+$$Q = \sum_{i=1}^{20} [P_i - \pi_i(\Omega)]^2$$
+
+with respect to the parameters of $\Omega$. The values of $i$ correspond to the exit or promotion of the individual in a given time period: for $1 \leq i \leq 10$, this denotes an exit in year $i$, and for $11 \leq i \leq 20$, this denotes a promotion of this person in year $i-10$ (i.e., $i=12$ means a promotion for the individual in year 2). $P_i$ is the observed probability of a worker exiting or promoting in period $i$.
+
+$\pi_i(\Omega)$ is the predicted probability of an exit or promotion in period $i$, where $\Omega = (\alpha, \tau, \theta_0, \mu, \sigma)$. These variables, respectively, correspond to: the probability of a Type A (able) worker producing a good signal; the probability of a Type B (unable) worker producing a good signal; the ex ante probability of a new worker being Type A; the mean of the worker promotion threshold $\theta_u$; and its standard deviation.
+
+When simplified, we see the probability of an exit in period $i$ as
+
+$$\pi_i = [\theta_0 \alpha^{i-1}(1-\alpha) + (1-\theta_0) \tau^{i-1}(1-\tau)] \int_{\theta (i-1,i-1)}^{1} g(\theta_u; \mu, \sigma) d\theta_u$$
+and the probability of a promotion in period $i$ as
+
+$$\pi_{i+10} = [\theta_0 \alpha^i + (1-\theta_0) \tau^i] \int_{\theta (i-1,i-1)}^{\theta (i,i)} g(\theta_u; \mu, \sigma) d\theta_u$$
+where $g(\theta_u; \mu, \sigma)$ is the beta distribution of $\theta_u$.
+
+## Initial Regression
+
+For this first attempt at the regression, we use its simplest form. This means that the statistics we use to qualify as a good signal are not normalized to league, and in fact are generalized across leagues: a good hitting signal is defined as an OPS over .825, and good hitting signal is defined as an ERA under 3.75. In future regressions, this performance will have appearance minimums, use more representative statistics, and normalize performance to the league's level of offense, but for now, this is a very rough first pass.
+
+-- RIGHT NOW: add variable for "good signal" and get probability of this happening in order to create the bounds on the integral... get beta distribution function to put inside the integral - how to derive this from just the mean and standard deviation? or just do the straight density function and back out mean and SD from there? --
+
+-- PROMOTION: (if not first year) play at higher level than prev. yr., or (if first year) play at multiple levels - assumes starting at lower level --
+
+-- EXIT: it's the last year the player appears in the data --
+
+-- for data analysis: take max values of signal, promotion, exit per player per year --
+
+```{r add_vars, echo=FALSE, message=FALSE}
+
+# Performance benchmark for "good signal"
+# OPS of 0.750, ERA of 4.50 (these are loose assumptions)
+
+bat_std <- 0.750
+pitch_std <- 4.50
+
+tst <- bat %>% 
+  mutate(Level = case_when(Level == "Rookie" ~ 1,
+                           Level == "Short-Season A" ~ 2,
+                           Level == "A" ~ 3,
+                           Level == "Adv A" ~ 4,
+                           Level == "AA" ~ 5,
+                           Level == "AAA" ~ 6,
+                           Level == "MLB" ~ 7),
+         signal = if_else(OPS >= bat_std, 1, 0, missing = 0)) %>% 
+  group_by(Name) %>% 
+  mutate(yr_unique = cumsum(!duplicated(Year)),
+         exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% 
+  ungroup() %>% 
+  group_by(Name, Year) %>% 
+  mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>% 
+  ungroup() %>% # year-after promotion
+  select(Name, Age, OPS, Year, Level, signal, yr_unique, exit, promotion) %>% 
+  filter(yr_unique <= 10) %>%
+  group_by(Name, Year) %>% 
+  summarize(Age = max(Age),
+            Level = max(Level),
+            signal = max(signal),
+            yr_unique = max(yr_unique),
+            exit = max(exit),
+            promotion = max(promotion)) %>% 
+  group_by(Name) %>% 
+  mutate(promotion = if_else(Level > lag(Level), 1, promotion)) %>% 
+  ungroup() %>% 
+  replace_na(list(promotion = 0)) %>% 
+  head(., 500)
+
+ ```
+
