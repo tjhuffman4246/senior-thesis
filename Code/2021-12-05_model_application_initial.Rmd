@@ -243,6 +243,11 @@ player_mvmt <- exit_distr %>%
 
 theta_bounds <- function(n, theta_0, alpha, tau){
   
+  # n <- theta_inputs[1]
+  # theta_0 <- theta_inputs[2]
+  # alpha <- theta_inputs[3]
+  # tau <- theta_inputs[4]
+
   num <- theta_0*(alpha^n)
   den <- theta_0*(alpha^n) + (1-theta_0)*(tau^n)
     
@@ -254,10 +259,18 @@ theta_bounds <- function(n, theta_0, alpha, tau){
 
 beta_integral <- function(exit, n, a, b, theta_0, alpha, tau){
   
+  # exit <- beta_inputs[1]
+  # n <- beta_inputs[2]
+  # a <- beta_inputs[3]
+  # b <- beta_inputs[4]
+  # theta_0 <- beta_inputs[5]
+  # alpha <- beta_inputs[6]
+  # tau <- beta_inputs[7]
+  
   bound_lower <- theta_bounds(n-1, theta_0, alpha, tau)
   bound_upper <- if_else(exit, 1, theta_bounds(n, theta_0, alpha, tau))
   
-  integrand <- function(x, a, b){
+  integrand <- function(x){
     
     num <- (x^(a-1)) * ((1-x)^(b-1))
     den <- beta(a, b)
@@ -265,12 +278,18 @@ beta_integral <- function(exit, n, a, b, theta_0, alpha, tau){
     return(num / den)
   }
   
-  return(integrate(integrand, lower = bound_lower, upper = bound_upper))
+  return(integrate(integrand, lower = bound_lower, upper = bound_upper)$value)
 }
 
 # Gets the multiplication term
 
 mult_term <- function(exit, n, theta_0, alpha, tau){
+  
+  # exit <- mult_inputs[1]
+  # n <- mult_inputs[2]
+  # theta_0 <- mult_inputs[3]
+  # alpha <- mult_inputs[4]
+  # tau <- mult_inputs[5]
   
   if (exit){
     val <- theta_0*(alpha^(n-1))*(1-alpha) + (1-theta_0)*(tau^(n-1))*(1-tau)
@@ -312,13 +331,9 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
     
     # Value for predicted probability
     
-    add_val <- mult_term(exit, i, theta_0, alpha, tau) * beta_integral(exit, 
-                                                                       i, 
-                                                                       a, 
-                                                                       b, 
-                                                                       theta_0, 
-                                                                       alpha, 
-                                                                       tau)
+    add_val <- mult_term(exit, i, theta_0, alpha, tau) * 
+      beta_integral(exit, i, a, b, theta_0, alpha, tau)
+    
     fn_val <- fn_val + (obsv - add_val)^2
   }
   
