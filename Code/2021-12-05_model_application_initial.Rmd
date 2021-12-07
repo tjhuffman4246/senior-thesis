@@ -42,7 +42,7 @@ For this first attempt at the regression, we use its simplest form. This means t
 ```{r add_vars, echo=FALSE, message=FALSE}
 
 # Number of years and performance benchmark for "good signal"
-# OPS of 0.750, ERA of 4.00 (these are loose assumptions)
+# OPS of 0.700, ERA of 4.50 (these are loose assumptions)
 
 n_years <- 10
 bat_std <- 0.700
@@ -134,7 +134,9 @@ pitch_performance <- pitch %>%
 
 ```
 
--- RIGHT NOW: add variable for "good signal" and get probability of this happening in order to create the bounds on the integral... get beta distribution function to put inside the integral - how to derive this from just the mean and standard deviation? or just do the straight density function and back out mean and SD from there?... Future modification: instead of doing P(good signal) = x, P(bad signal) = 1-x, reverse it so that P(bad signal) = y, P(good signal) = 1-y -> professional baseball is more of a war of attrition, so if you're always not bad then that will get you promoted as people retire... use player IDs instead of names --
+-- RIGHT NOW: Future modification: instead of doing P(good signal) = x, P(bad signal) = 1-x, reverse it so that P(bad signal) = y, P(good signal) = 1-y -> professional baseball is more of a war of attrition, so if you're always not bad then that will get you promoted as people retire... use player IDs instead of names --
+
+-- FOR PAPER: what standard to use for OPS/ERA? should be relative to league... should the promotion variable be 1 if they remain in the major leagues? (it's not currently) don't we want to weight the major leagues heavier?... explain upper/lower bounds, and have system for more rigorous initial guess... the promotion probability threshold is a mean across all levels, not specified level-by-level... intuition behind very accurate exit probabilities, but inaccurate promotion probabilities - in all empirical analyses, the exit is a one-time thing, but not the case here for promotion -> skewing the data?... weighting promotion count by total number of promotions here to normalize within the data - is that valid? should we also be normalizing for promotion probabilities?... how does fit of the model change over time/with different stats? able to reveal changes in team tendencies over time? -- 
 
 ```{r exit_and_promotion, echo=FALSE, message=FALSE}
 
@@ -231,7 +233,7 @@ player_mvmt <- exit_distr %>%
   bind_rows(promote_distr %>% select(pct)) %>% 
   mutate(# pct = pct / sum(.$pct), # normalizing to sum to 1 - probably not accurate?
          year = rep(seq(1:10), 2),
-         mvmt = c(rep("out", 10), rep(("up"), 10)),
+         exit = c(rep(T, 10), rep(F, 10)),
          cell = seq(1:20))
 
 ```
@@ -292,13 +294,9 @@ mult_term <- function(exit, n, theta_0, alpha, tau){
   # alpha <- mult_inputs[4]
   # tau <- mult_inputs[5]
   
-  if (exit){
-    val <- theta_0*(alpha^(n-1))*(1-alpha) + (1-theta_0)*(tau^(n-1))*(1-tau)
-  }
-  
-  else{
-    val <- theta_0*(alpha^n) + (1-theta_0)*(tau^n)
-  }
+  val <- if_else(exit, 
+                 theta_0*(alpha^(n-1))*(1-alpha) + (1-theta_0)*(tau^(n-1))*(1-tau),
+                 theta_0*(alpha^n) + (1-theta_0)*(tau^n))
   
   return(val)
 }
@@ -306,6 +304,8 @@ mult_term <- function(exit, n, theta_0, alpha, tau){
 ```
 
 ```{r optimize, echo=FALSE, message=FALSE}
+
+# Function to optimize
 
 fn_optim <- function(input_vals){ # making this a vector for optimization
   
@@ -341,9 +341,11 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
   return(fn_val)
 }
 
+# Inequality function
+
 fn_ineq <- function(input_vals){
   
-  return(input_vals[3] - input_vals[2])
+  return(input_vals[3] - input_vals[2]) # ensures that alpha >= tau
   
 }
 
@@ -373,5 +375,86 @@ results <- nloptr(init_guess,
                   opts = list("algorithm" = "NLOPT_LN_COBYLA",
                               "xtol_rel" = 1.0e-8))
 
+# Getting the parameters from our calculations
+
+params <- results$solution
+theta_0_pred <- params[1]
+alpha_pred <- params[2]
+tau_pred <- params[3]
+a_pred <- params[4]
+b_pred <- params[5]
+
 ```
 
+```{r figures, echo=FALSE}
+
+# Adding predicted percent of players falling into cell
+
+player_mvmt <- player_mvmt %>% 
+  rowwise() %>% # applying the model row-by-row
+  mutate(pred_pct = mult_term(exit, year, theta_0_pred, alpha_pred, tau_pred) * 
+           beta_integral(exit, year, a_pred, b_pred, 
+                         theta_0_pred, alpha_pred, tau_pred)) %>% 
+  ungroup() %>% 
+  pivot_longer(cols = ends_with("pct"),
+               names_to = "observed",
+               values_to = "pct") %>% 
+  mutate(observed = if_else(str_detect(observed, "pred"), F, T))
+
+# Graphing predicted percentages and observed percentages
+
+# Exit probability
+
+player_mvmt %>% 
+  filter(exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Exit Probability (Percent)",
+       title = "Professional Baseball Exit Probability, by Year of Career",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Promotion probability
+
+player_mvmt %>% 
+  filter(!exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Promotion Probability (Percent)",
+       title = "Professional Baseball Promotion Probability, by Year of Career",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Comparing observed exit and promotion probabilities
+
+player_mvmt %>% 
+  filter(observed) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = exit) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Promotion", "Exit"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Probability (Percent)",
+       title = "Professional Baseball Promotion and Exit Probabilities, by Year of Career",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+```
