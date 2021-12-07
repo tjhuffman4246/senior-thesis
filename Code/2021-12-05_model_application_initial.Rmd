@@ -235,7 +235,7 @@ player_mvmt <- exit_distr %>%
 
 ```
 
-```{r calculations, echo=FALSE, message=FALSE}
+```{r calc_functions, echo=FALSE, message=FALSE}
 
 # want to define the function π_i(Ω) that can calculate it for each value of i
 
@@ -246,7 +246,7 @@ theta_bounds <- function(n, theta_0, alpha, tau){
   num <- theta_0*(alpha^n)
   den <- theta_0*(alpha^n) + (1-theta_0)*(tau^n)
     
-  return(num / dem)
+  return(num / den)
 }
 
 # Calculating the beta density integral
@@ -282,6 +282,50 @@ mult_term <- function(exit, n, theta_0, alpha, tau){
   
   return(val)
 }
+
+```
+
+```{r optimize, echo=FALSE, message=FALSE}
+
+fn_optim <- function(input_vals){ # making this a vector for optimization
+  
+  theta_0 <- input_vals[1]
+  alpha <- input_vals[2]
+  tau <- input_vals[3]
+  a <- input_vals[4]
+  b <- input_vals[5]
+  
+  fn_val <- 0
+  
+  for(i in 1:(2*n_years)){
+    
+    # Filtering the observed data to the cell in question
+    
+    data <- player_mvmt %>% 
+      filter(cell == i)
+    
+    # Isolating variables for ease of use
+    
+    obsv <- data$pct # observed probability
+    cell <- data$cell # cell index
+    exit <- if_else(cell <= n_years, T, F) # whether it's an exit period
+    
+    # Value for predicted probability
+    
+    add_val <- mult_term(exit, i, theta_0, alpha, tau) * beta_integral(exit, 
+                                                                       i, 
+                                                                       a, 
+                                                                       b, 
+                                                                       theta_0, 
+                                                                       alpha, 
+                                                                       tau)
+    fn_val <- fn_val + (obsv - add_val)^2
+  }
+  
+  return(fn_val)
+}
+
+optim(c(0,0,0,0,0), fn_optim)
 
 ```
 
