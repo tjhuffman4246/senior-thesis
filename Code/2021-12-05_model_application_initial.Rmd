@@ -8,6 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(optimr)
+library(nloptr)
 library(knitr)
 library(kableExtra)
 bat = read_csv('../Data/Clean/bat/bat_all.csv')
@@ -41,7 +42,7 @@ For this first attempt at the regression, we use its simplest form. This means t
 ```{r add_vars, echo=FALSE, message=FALSE}
 
 # Number of years and performance benchmark for "good signal"
-# OPS of 0.700, ERA of 4.50 (these are loose assumptions)
+# OPS of 0.750, ERA of 4.00 (these are loose assumptions)
 
 n_years <- 10
 bat_std <- 0.700
@@ -69,7 +70,7 @@ bat_performance <- bat %>%
   # latter is because there's no higher stage than MLB...
   # ... so staying at this level is equivalent of constant promotion
   # ** potentially faulty assumption, TBD **
-# mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
+  # mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
   mutate(promotion = if_else(n_distinct(Level) != 1, 1, 0)) %>%
   ungroup() %>%
   select(Name, Age, Year, Level, signal, yr_unique, exit, promotion) %>% 
@@ -111,7 +112,7 @@ pitch_performance <- pitch %>%
   # latter is because there's no higher stage than MLB...
   # ... so staying at this level is equivalent of constant promotion
   # ** potentially faulty assumption, TBD **
-# mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
+  # mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
   mutate(promotion = if_else(n_distinct(Level) != 1, 1, 0)) %>%
   ungroup() %>%
   select(Name, Age, Year, Level, signal, yr_unique, exit, promotion) %>% 
@@ -340,7 +341,37 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
   return(fn_val)
 }
 
-optim(c(0,0,0,0,0), fn_optim)
+fn_ineq <- function(input_vals){
+  
+  return(input_vals[3] - input_vals[2])
+  
+}
+
+# Initial guesses for parameter values and their respective bounds
+# theta_0, alpha, tau, a, b
+
+init_guess <- c(0.05, 0.5, 0.5, 2, 2)
+param_bounds_low <- c(0.01, 0.05, 0.05, 1, 1)
+param_bounds_high <- c(1, 0.95, 0.95, Inf, Inf)
+
+# Getting some results!
+
+# Unconstrained optimization
+
+# results <- optim(init_guess, fn_optim,
+#                  lower = param_bounds_low,
+#                  upper = param_bounds_high,
+#                  method = "L-BFGS-B")
+
+# Constrained optimization
+
+results <- nloptr(init_guess,
+                  fn_optim,
+                  lb = param_bounds_low,
+                  ub = param_bounds_high,
+                  eval_g_ineq = fn_ineq,
+                  opts = list("algorithm" = "NLOPT_LN_COBYLA",
+                              "xtol_rel" = 1.0e-8))
 
 ```
 
