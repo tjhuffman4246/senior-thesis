@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(optimr)
 library(knitr)
 library(kableExtra)
 bat = read_csv('../Data/Clean/bat/bat_all.csv')
@@ -29,29 +30,27 @@ $$\pi_i = [\theta_0 \alpha^{i-1}(1-\alpha) + (1-\theta_0) \tau^{i-1}(1-\tau)] \i
 and the probability of a promotion in period $i$ as
 
 $$\pi_{i+10} = [\theta_0 \alpha^i + (1-\theta_0) \tau^i] \int_{\theta (i-1,i-1)}^{\theta (i,i)} g(\theta_u; \mu, \sigma) d\theta_u$$
-where $g(\theta_u; \mu, \sigma)$ is the beta distribution of $\theta_u$.
+where $g(\theta_u; \mu, \sigma)$ is the beta distribution of $\theta_u$. Additionally, $\theta(x,n)$ represents the probability of a worker producing $x$ good signals in $n$ periods, which by Bayes' rule can be represented as
+
+$$\theta(x,n) = \frac{\theta_0 \alpha^x (1-\alpha)^{n-x}}{\theta_0 \alpha^x (1-\alpha)^{n-x} + (1-\theta_0) \tau^x (1-\tau)^{n-x}}$$
 
 ## Initial Regression
 
 For this first attempt at the regression, we use its simplest form. This means that the statistics we use to qualify as a good signal are not normalized to league, and in fact are generalized across leagues: a good hitting signal is defined as an OPS over .825, and good hitting signal is defined as an ERA under 3.75. In future regressions, this performance will have appearance minimums, use more representative statistics, and normalize performance to the league's level of offense, but for now, this is a very rough first pass.
 
--- RIGHT NOW: add variable for "good signal" and get probability of this happening in order to create the bounds on the integral... get beta distribution function to put inside the integral - how to derive this from just the mean and standard deviation? or just do the straight density function and back out mean and SD from there? --
-
--- PROMOTION: (if not first year) play at higher level than prev. yr., or (if first year) play at multiple levels - assumes starting at lower level --
-
--- EXIT: it's the last year the player appears in the data --
-
--- for data analysis: take max values of signal, promotion, exit per player per year --
-
 ```{r add_vars, echo=FALSE, message=FALSE}
 
-# Performance benchmark for "good signal"
-# OPS of 0.750, ERA of 4.50 (these are loose assumptions)
+# Number of years and performance benchmark for "good signal"
+# OPS of 0.700, ERA of 4.50 (these are loose assumptions)
 
-bat_std <- 0.750
+n_years <- 10
+bat_std <- 0.700
 pitch_std <- 4.50
 
-tst <- bat %>% 
+# Batters
+
+bat_performance <- bat %>% 
+  # making level into scalar for ease of comparison
   mutate(Level = case_when(Level == "Rookie" ~ 1,
                            Level == "Short-Season A" ~ 2,
                            Level == "A" ~ 3,
@@ -59,16 +58,23 @@ tst <- bat %>%
                            Level == "AA" ~ 5,
                            Level == "AAA" ~ 6,
                            Level == "MLB" ~ 7),
+         # good signal is when OPS is greater than standard
          signal = if_else(OPS >= bat_std, 1, 0, missing = 0)) %>% 
   group_by(Name) %>% 
-  mutate(yr_unique = cumsum(!duplicated(Year)),
+  mutate(yr_unique = cumsum(!duplicated(Year)), # counter of unique year played
          exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% 
   ungroup() %>% 
   group_by(Name, Year) %>% 
-  mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>% 
-  ungroup() %>% # year-after promotion
-  select(Name, Age, OPS, Year, Level, signal, yr_unique, exit, promotion) %>% 
-  filter(yr_unique <= 10) %>%
+  # promotion if they either played at multiple levels or played at MLB
+  # latter is because there's no higher stage than MLB...
+  # ... so staying at this level is equivalent of constant promotion
+  # ** potentially faulty assumption, TBD **
+# mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
+  mutate(promotion = if_else(n_distinct(Level) != 1, 1, 0)) %>%
+  ungroup() %>%
+  select(Name, Age, Year, Level, signal, yr_unique, exit, promotion) %>% 
+  # limiting to ten seasons of data, another assumption
+  filter(yr_unique <= n_years) %>%
   group_by(Name, Year) %>% 
   summarize(Age = max(Age),
             Level = max(Level),
@@ -77,10 +83,205 @@ tst <- bat %>%
             exit = max(exit),
             promotion = max(promotion)) %>% 
   group_by(Name) %>% 
-  mutate(promotion = if_else(Level > lag(Level), 1, promotion)) %>% 
+  # also says someone was promoted if their level was higher this year than before
+  mutate(promotion = if_else(Level > lag(Level), 1, promotion),
+         signal_ct = cumsum(signal)) %>% 
   ungroup() %>% 
-  replace_na(list(promotion = 0)) %>% 
-  head(., 500)
+  replace_na(list(promotion = 0))
 
- ```
+# Pitchers
+
+pitch_performance <- pitch %>% 
+  # making level into scalar for ease of comparison
+  mutate(Level = case_when(Level == "Rookie" ~ 1,
+                           Level == "Short-Season A" ~ 2,
+                           Level == "A" ~ 3,
+                           Level == "Adv A" ~ 4,
+                           Level == "AA" ~ 5,
+                           Level == "AAA" ~ 6,
+                           Level == "MLB" ~ 7),
+         # good signal is when OPS is greater than standard
+         signal = if_else(ERA <= pitch_std, 1, 0, missing = 0)) %>% 
+  group_by(Name) %>% 
+  mutate(yr_unique = cumsum(!duplicated(Year)), # counter of unique year played
+         exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% 
+  ungroup() %>% 
+  group_by(Name, Year) %>% 
+  # promotion if they either played at multiple levels or played at MLB
+  # latter is because there's no higher stage than MLB...
+  # ... so staying at this level is equivalent of constant promotion
+  # ** potentially faulty assumption, TBD **
+# mutate(promotion = if_else(n_distinct(Level) != 1 | max(Level) == 7, 1, 0)) %>%
+  mutate(promotion = if_else(n_distinct(Level) != 1, 1, 0)) %>%
+  ungroup() %>%
+  select(Name, Age, Year, Level, signal, yr_unique, exit, promotion) %>% 
+  # limiting to ten seasons of data, another assumption
+  filter(yr_unique <= n_years) %>%
+  group_by(Name, Year) %>% 
+  summarize(Age = max(Age),
+            Level = max(Level),
+            signal = max(signal),
+            yr_unique = max(yr_unique),
+            exit = max(exit),
+            promotion = max(promotion)) %>% 
+  group_by(Name) %>% 
+  # also says someone was promoted if their level was higher this year than before
+  mutate(promotion = if_else(Level > lag(Level), 1, promotion),
+         signal_ct = cumsum(signal)) %>% 
+  ungroup() %>% 
+  replace_na(list(promotion = 0))
+
+```
+
+-- RIGHT NOW: add variable for "good signal" and get probability of this happening in order to create the bounds on the integral... get beta distribution function to put inside the integral - how to derive this from just the mean and standard deviation? or just do the straight density function and back out mean and SD from there?... Future modification: instead of doing P(good signal) = x, P(bad signal) = 1-x, reverse it so that P(bad signal) = y, P(good signal) = 1-y -> professional baseball is more of a war of attrition, so if you're always not bad then that will get you promoted as people retire... use player IDs instead of names --
+
+```{r exit_and_promotion, echo=FALSE, message=FALSE}
+
+# Batter exits
+
+n_bat <- bat %>% # number of unique batters
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+exit_distr_bat <- bat %>% # distribution of player exit times
+  group_by(Name) %>%
+  summarise(n_year = n_distinct(Year)) %>% 
+  group_by(n_year) %>% 
+  summarise(n_players = n_distinct(Name)) %>% 
+  filter(n_year <= n_years) %>% 
+  mutate(pct = n_players / n_bat,
+         pos = 'Batters') # 100x multiplier to make it a true percent
+
+# Pitcher exits
+
+n_pitch <- pitch %>% # number of unique pitchers
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+exit_distr_pitch <- pitch %>% # distribution of player exit times
+  group_by(Name) %>%
+  summarise(n_year = n_distinct(Year)) %>% 
+  group_by(n_year) %>% 
+  summarise(n_players = n_distinct(Name)) %>% 
+  filter(n_year <= n_years) %>% 
+  mutate(pct = n_players / n_pitch,
+         pos = 'Pitchers') # 100x multiplier to make it a true percent
+
+# Merging the dataframes
+
+n_total <- n_bat + n_pitch
+
+exit_distr <- exit_distr_bat %>% 
+  bind_cols(exit_distr_pitch) %>% 
+  mutate(n_year = n_year...1,
+         n_players = n_players...2 + n_players...6,
+         pct = n_players / n_total) %>% 
+  select(n_year, n_players, pct)
+
+# Batter promotions
+
+promote_distr_bat <- bat_performance %>% 
+  group_by(yr_unique) %>% 
+  summarize(n_players = sum(promotion),
+            pct = n_players / n_bat)
+
+# Pitcher promotions
+
+promote_distr_pitch <- pitch_performance %>% 
+  group_by(yr_unique) %>% 
+  summarize(n_players = sum(promotion),
+            pct = n_players / n_pitch)
+
+# Weighting the percent promoted by the average number of promotions
+# This is to prevent probabilities from surpassing 1
+
+performance <- bat_performance %>% 
+  bind_rows(pitch_performance)
+
+n_promotions <- performance %>% 
+  group_by(Name) %>% 
+  summarize(promotions_total = sum(promotion)) %>% 
+  select(promotions_total) %>% 
+  pull() %>% 
+  mean()
+
+# Combined promotions
+
+promote_distr <- bat_performance %>% 
+  group_by(yr_unique) %>% 
+  summarize(n_players = sum(promotion)) %>% 
+  bind_cols(pitch_performance %>% 
+              group_by(yr_unique) %>% 
+              summarize(n_players = sum(promotion))) %>% 
+  mutate(n_years = yr_unique...1,
+         n_players = n_players...2 + n_players...4,
+         pct = (n_players / n_total) / n_promotions) %>% # weighting by total promotes
+         # pct = (n_players / n_total)) %>% 
+  select(n_years, n_players, pct)
+
+# Defining the dataframe with probabilities for each cell
+
+player_mvmt <- exit_distr %>% 
+  select(pct) %>% 
+  bind_rows(promote_distr %>% select(pct)) %>% 
+  mutate(# pct = pct / sum(.$pct), # normalizing to sum to 1 - probably not accurate?
+         year = rep(seq(1:10), 2),
+         mvmt = c(rep("out", 10), rep(("up"), 10)),
+         cell = seq(1:20))
+
+```
+
+```{r calculations, echo=FALSE, message=FALSE}
+
+# want to define the function π_i(Ω) that can calculate it for each value of i
+
+# Calculating bounds for the beta density integral
+
+theta_bounds <- function(n, theta_0, alpha, tau){
+  
+  num <- theta_0*(alpha^n)
+  den <- theta_0*(alpha^n) + (1-theta_0)*(tau^n)
+    
+  return(num / dem)
+}
+
+# Calculating the beta density integral
+# Bounds change depending on whether it's an entry or exit
+
+beta_integral <- function(exit, n, a, b, theta_0, alpha, tau){
+  
+  bound_lower <- theta_bounds(n-1, theta_0, alpha, tau)
+  bound_upper <- if_else(exit, 1, theta_bounds(n, theta_0, alpha, tau))
+  
+  integrand <- function(x, a, b){
+    
+    num <- (x^(a-1)) * ((1-x)^(b-1))
+    den <- beta(a, b)
+    
+    return(num / den)
+  }
+  
+  return(integrate(integrand, lower = bound_lower, upper = bound_upper))
+}
+
+# Gets the multiplication term
+
+mult_term <- function(exit, n, theta_0, alpha, tau){
+  
+  if (exit){
+    val <- theta_0*(alpha^(n-1))*(1-alpha) + (1-theta_0)*(tau^(n-1))*(1-tau)
+  }
+  
+  else{
+    val <- theta_0*(alpha^n) + (1-theta_0)*(tau^n)
+  }
+  
+  return(val)
+}
+
+```
 
