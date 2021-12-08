@@ -136,7 +136,7 @@ pitch_performance <- pitch %>%
 
 -- RIGHT NOW: Future modification: instead of doing P(good signal) = x, P(bad signal) = 1-x, reverse it so that P(bad signal) = y, P(good signal) = 1-y -> professional baseball is more of a war of attrition, so if you're always not bad then that will get you promoted as people retire... use player IDs instead of names --
 
--- FOR PAPER: what standard to use for OPS/ERA? should be relative to league... should the promotion variable be 1 if they remain in the major leagues? (it's not currently) don't we want to weight the major leagues heavier?... explain upper/lower bounds, and have system for more rigorous initial guess... the promotion probability threshold is a mean across all levels, not specified level-by-level... intuition behind very accurate exit probabilities, but inaccurate promotion probabilities - in all empirical analyses, the exit is a one-time thing, but not the case here for promotion -> skewing the data?... weighting promotion count by total number of promotions here to normalize within the data - is that valid? should we also be normalizing for promotion probabilities?... how does fit of the model change over time/with different stats? able to reveal changes in team tendencies over time? -- 
+-- FOR PAPER: what standard to use for OPS/ERA? should be relative to league... should the promotion variable be 1 if they remain in the major leagues? (it's not currently) don't we want to weight the major leagues heavier?... explain upper/lower bounds, and have system for more rigorous initial guess... the promotion probability threshold is a mean across all levels, not specified level-by-level... intuition behind very accurate exit probabilities, but inaccurate promotion probabilities - in all empirical analyses, the exit is a one-time thing, but not the case here for promotion -> skewing the data?... weighting promotion count by total number of promotions here to normalize within the data - is that valid? should we also be normalizing for promotion probabilities?... how does fit of the model change over time/with different stats? able to reveal changes in team tendencies over time?... updated tables for summary statistics and inclusion of hazard rate and transition matrix... exit should NOT just be the last year the player is in the data - should not include 2019 -- 
 
 ```{r exit_and_promotion, echo=FALSE, message=FALSE}
 
@@ -417,7 +417,6 @@ player_mvmt %>%
                      values = c("red", "blue")) +
   labs(x = "Number of Seasons Played",
        y = "Exit Probability (Percent)",
-       title = "Professional Baseball Exit Probability, by Year of Career",
        caption = "Levels: Rookie through MLB") +
   theme_classic()
 
@@ -435,7 +434,6 @@ player_mvmt %>%
                      values = c("red", "blue")) +
   labs(x = "Number of Seasons Played",
        y = "Promotion Probability (Percent)",
-       title = "Professional Baseball Promotion Probability, by Year of Career",
        caption = "Levels: Rookie through MLB") +
   theme_classic()
 
@@ -453,8 +451,235 @@ player_mvmt %>%
                      values = c("red", "blue")) +
   labs(x = "Number of Seasons Played",
        y = "Probability (Percent)",
-       title = "Professional Baseball Promotion and Exit Probabilities, by Year of Career",
        caption = "Levels: Rookie through MLB") +
   theme_classic()
 
 ```
+
+```{r summary_bat, echo=FALSE}
+
+# Updated tables from D3
+
+# Compiling some batter summary statistics
+# First getting a table w/ all years w/ >= 20 PA
+
+bat_min_pa_20 <- bat %>% 
+  group_by(Name, Year) %>% 
+  mutate(pa = sum(PA)) %>% 
+  filter(pa >= 20) %>% 
+  ungroup()
+
+# Number of players, both with minimums and without
+
+n_bat <- bat %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+n_bat_min <- bat_min_pa_20 %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played, both with minimums and without
+
+n_years <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+n_years_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for, both with minimums and without
+
+n_teams <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+n_teams_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at, both with minimums and without
+
+n_levels <- bat %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+n_levels_min <- bat_min_pa_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of plate appearances per year, both with minimums and without
+
+n_pa <- bat %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa = sum(PA)) %>% 
+  select(pa) %>% 
+  pull()
+
+n_pa_min <- bat_min_pa_20 %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa = sum(PA)) %>% 
+  select(pa) %>% 
+  pull()
+
+bat_player = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "PA per Year"),
+  M_1  = c(mean(n_years), mean(n_teams), mean(n_levels), mean(n_pa)),
+  Pct1_10 = c(quantile(n_years, .1), quantile(n_teams, .1),
+              quantile(n_levels, .1), quantile(n_pa, .1)),
+  Pct1_90 = c(quantile(n_years, .9), quantile(n_teams, .9),
+              quantile(n_levels, .9), quantile(n_pa, .9)),
+  SD_1 = c(sd(n_years), sd(n_teams), sd(n_levels), sd(n_pa)),
+  M_2  = c(mean(n_years_min), mean(n_teams_min), mean(n_levels_min), mean(n_pa_min)),
+  Pct2_10 = c(quantile(n_years_min, .1), quantile(n_teams_min, .1),
+              quantile(n_levels_min, .1), quantile(n_pa_min, .1)),
+  Pct2_90 = c(quantile(n_years_min, .9), quantile(n_teams_min, .9),
+              quantile(n_levels_min, .9), quantile(n_pa_min, .9)),
+  SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_pa_min))
+)
+
+```
+
+```{r summary_pitch, echo=FALSE}
+
+# Updated tables from D3
+
+# Compiling some pitcher summary statistics
+# First getting a table w/ all years w/ >= 20 BF
+
+pitch_min_bf_20 <- pitch %>% 
+  group_by(Name, Year) %>% 
+  mutate(bf = sum(BF)) %>% 
+  filter(bf >= 20) %>% 
+  ungroup()
+
+# Number of players, both with minimums and without
+
+n_pitch <- pitch %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+n_pitch_min <- pitch_min_bf_20 %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played, both with minimums and without
+
+n_years <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+n_years_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for, both with minimums and without
+
+n_teams <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+n_teams_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at, both with minimums and without
+
+n_levels <- pitch %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+n_levels_min <- pitch_min_bf_20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of batters faced per year, both with minimums and without
+
+n_bf <- pitch %>% 
+  group_by(Name, Year) %>% 
+  summarize(bf = sum(BF)) %>% 
+  select(bf) %>% 
+  pull()
+
+n_bf_min <- pitch_min_bf_20 %>% 
+  group_by(Name, Year) %>% 
+  summarize(bf = sum(BF)) %>% 
+  select(bf) %>% 
+  pull()
+
+pitch_player = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "BF per Year"),
+  M_1  = c(mean(n_years), mean(n_teams), mean(n_levels), mean(n_bf, na.rm = TRUE)),
+  Pct1_10 = c(quantile(n_years, .1), quantile(n_teams, .1),
+              quantile(n_levels, .1), quantile(n_bf, .1, na.rm = TRUE)),
+  Pct1_90 = c(quantile(n_years, .9), quantile(n_teams, .9),
+              quantile(n_levels, .9), quantile(n_bf, .9, na.rm = TRUE)),
+  SD_1 = c(sd(n_years), sd(n_teams), sd(n_levels), sd(n_bf, na.rm = TRUE)),
+  M_2  = c(mean(n_years_min), mean(n_teams_min), mean(n_levels_min), mean(n_bf_min)),
+  Pct2_10 = c(quantile(n_years_min, .1), quantile(n_teams_min, .1),
+              quantile(n_levels_min, .1), quantile(n_bf_min, .1)),
+  Pct2_90 = c(quantile(n_years_min, .9), quantile(n_teams_min, .9),
+              quantile(n_levels_min, .9), quantile(n_bf_min, .9)),
+  SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_bf_min))
+)
+
+```
+
+```{r transition_matrix, echo=FALSE}
+
+total_matrix <- performance %>% 
+  group_by(Name) %>% 
+  filter(min(Year) %in% c(2008:2010)) %>% # only incl. those w/ full ten seasons
+  mutate(start_level = first(Level)) %>% 
+  ungroup() %>%
+  group_by(start_level, yr_unique, Level) %>%
+  summarize(ct = n_distinct(Name)) %>% 
+  ungroup()
+
+n_start <- total_matrix %>% 
+  filter(yr_unique == 1) %>% 
+  group_by(start_level) %>% 
+  summarize(n = sum(ct))
+
+total_matrix %>% 
+  filter(yr_unique == 2, start_level == 7) %>% 
+  add_row(start_level = 7,
+          yr_unique = 2,
+          Level = 0,
+          ct = filter(n_start, start_level == 7)$n - sum(.$ct))
+
+```
+

@@ -288,9 +288,11 @@ player_ct <- bat_ct %>%
 
 ggplot(player_ct, aes(x = Year, y = ct, color = pos)) +
   geom_line() +
+  scale_color_manual(name = "Position",
+                     labels = c("Batters", "Pitchers"),
+                     values = c("red", "blue")) +
   labs(x = "Year",
        y = "Player Count",
-       title = "Professional Baseball Player Count, by Year",
        caption = "Levels: Rookie, Short-Season A, Low-A, High-A, Double-A, Triple-A, MLB",
        color = "Position") +
   scale_y_continuous(breaks = seq(3000, 4500, by = 250)) +

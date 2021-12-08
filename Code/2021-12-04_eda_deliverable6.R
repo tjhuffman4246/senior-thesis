@@ -57,10 +57,12 @@ exit_distr %>%
   geom_line() +
   geom_hline(yintercept = 0,
              linetype = 'dotted',
-             col = 'red') +
+             col = 'black') +
+  scale_color_manual(name = "Position",
+                     labels = c("Batters", "Pitchers"),
+                     values = c("red", "blue")) +
   labs(x = "Number of Seasons Played",
        y = "Percent Exiting",
-       title = "Professional Baseball Hazard Rate, by Year",
        caption = "Levels: Rookie through MLB",
        color = "Position") +
   theme_classic()
@@ -75,3 +77,4 @@ exit_distr %>%
   rowwise() %>% 
   mutate(`10+` = 100 - sum(c_across(`1`:`9`))) %>% 
   ungroup()
+
