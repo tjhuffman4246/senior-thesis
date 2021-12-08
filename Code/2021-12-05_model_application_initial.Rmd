@@ -134,9 +134,7 @@ pitch_performance <- pitch %>%
 
 ```
 
--- RIGHT NOW: Future modification: instead of doing P(good signal) = x, P(bad signal) = 1-x, reverse it so that P(bad signal) = y, P(good signal) = 1-y -> professional baseball is more of a war of attrition, so if you're always not bad then that will get you promoted as people retire... use player IDs instead of names --
-
--- FOR PAPER: what standard to use for OPS/ERA? should be relative to league... should the promotion variable be 1 if they remain in the major leagues? (it's not currently) don't we want to weight the major leagues heavier?... explain upper/lower bounds, and have system for more rigorous initial guess... the promotion probability threshold is a mean across all levels, not specified level-by-level... intuition behind very accurate exit probabilities, but inaccurate promotion probabilities - in all empirical analyses, the exit is a one-time thing, but not the case here for promotion -> skewing the data?... weighting promotion count by total number of promotions here to normalize within the data - is that valid? should we also be normalizing for promotion probabilities?... how does fit of the model change over time/with different stats? able to reveal changes in team tendencies over time?... updated tables for summary statistics and inclusion of hazard rate and transition matrix... exit should NOT just be the last year the player is in the data - should not include 2019 -- 
+-- FOR PAPER: weighting promotion count by total number of promotions here to normalize within the data - is that valid? should we also be normalizing for promotion probabilities?... exit should NOT just be the last year the player is in the data - should not include 2019... use player IDs instead of names -- 
 
 ```{r exit_and_promotion, echo=FALSE, message=FALSE}
 
@@ -660,6 +658,8 @@ pitch_player = tibble(
 
 ```{r transition_matrix, echo=FALSE}
 
+# All start/year/level combinations
+
 total_matrix <- performance %>% 
   group_by(Name) %>% 
   filter(min(Year) %in% c(2008:2010)) %>% # only incl. those w/ full ten seasons
@@ -669,10 +669,14 @@ total_matrix <- performance %>%
   summarize(ct = n_distinct(Name)) %>% 
   ungroup()
 
+# Number of players starting in each level
+
 n_start <- total_matrix %>% 
   filter(yr_unique == 1) %>% 
   group_by(start_level) %>% 
   summarize(n = sum(ct))
+
+# Number of players from start level A at each level in year B
 
 total_matrix %>% 
   filter(yr_unique == 2, start_level == 7) %>% 
