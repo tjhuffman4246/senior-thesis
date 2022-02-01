@@ -12,8 +12,7 @@ library(optimr)
 library(nloptr)
 library(knitr)
 library(kableExtra)
-player_mvmt = read_csv('../Data/Clean/mvmt_obsv.csv') %>% 
-  arrange(exit)
+player_mvmt = read_csv('../Data/Clean/mvmt_obsv.csv')
 
 n_years <- 10  # maximum number of years for a player in the data
 ```
