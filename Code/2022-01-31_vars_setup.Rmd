@@ -48,13 +48,34 @@ bat_performance <- bat %>%
          level_high = max(Level),
          level_low = min(Level), # both high and low levels, so we know if next year's level is strictly greater (for promotions)
          yr_unique = max(yr_unique),
+         yr_debut = min(Year),
          exit = max(exit),
          promotion = max(promotion)) %>% 
   ungroup() %>% 
   group_by(Name) %>% 
   # promoted if you play at a strictly higher level next year
   mutate(promotion = if_else(level_high < lead(level_low, default = 0), 1, promotion)) %>% 
-  ungroup()
+  ungroup() %>% 
+  filter(pa_total > 20) %>% # filtering out pitchers, for the most part
+  group_by(Year, Level) %>% 
+  # creating OPS threshold for a good signal
+  mutate(ops_threshold = quantile(OPS, probs = 1/2, na.rm = TRUE),
+         signal = if_else(OPS >= ops_threshold, 1, 0, missing = 0)) %>% 
+  ungroup() %>% 
+  arrange(Name, Year, Level) %>% # arranges by level to make it easier to get lowest-level signal (the signal for our purposes)
+  group_by(Name, Year) %>% 
+  summarize(age = Age,
+            level_high = level_high,
+            level_low = level_low,
+            yr_unique = yr_unique,
+            yr_debut = yr_debut,
+            exit = exit,
+            promotion = max(promotion),
+            signal = first(signal)) %>% 
+  unique() %>% 
+  filter(yr_unique <= n_years,
+         yr_debut >= 1999,
+         yr_debut <= 2009)
   
 ```
 
