@@ -7,9 +7,48 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+library(tidyverse)
+library(optimr)
+library(nloptr)
+library(knitr)
+library(kableExtra)
+player_mvmt <- read_csv('../Data/Clean/mvmt_obsv.csv')
 ```
 
 ## Overview
 
 This is part of a series of RMarkdown files that will break down the code contained in the document at the end of the fall. This file in particular will write the functions necessary to run the O'Flaherty and Siow model, run the model, and update the figures used in the thesis.
+
+## Model Details
+
+We want to minimize the objective function
+
+$$Q = \sum_{i=1}^{20} [P_i - \pi_i(\Omega)]^2$$
+
+with respect to the parameters of $\Omega$. The values of $i$ correspond to the exit or promotion of the individual in a given time period: for $1 \leq i \leq 10$, this denotes an exit in year $i$, and for $11 \leq i \leq 20$, this denotes a promotion of this person in year $i-10$ (e.g., $i=12$ means a promotion for the individual in year 2). $P_i$ is the observed probability of a worker exiting or being promoting in period $i$.
+
+$\pi_i(\Omega)$ is the predicted probability of an exit or promotion in period $i$, where $\Omega = (\alpha, \tau, \theta_0, \mu, \sigma)$. These variables, respectively, correspond to: the probability of a Type A (able) worker producing a good signal; the probability of a Type B (unable) worker producing a good signal; the ex ante probability of a new worker being Type A; the mean of the worker promotion threshold $\theta_u$; and its standard deviation.
+
+When simplified, we see the probability of an exit in period $i$ as
+
+$$\pi_i = [\theta_0 \alpha^{i-1}(1-\alpha) + (1-\theta_0) \tau^{i-1}(1-\tau)] \int_{\theta (i-1,i-1)}^{1} g(\theta_u; \mu, \sigma) d\theta_u$$
+
+and the probability of a promotion in period $i$ as
+
+$$\pi_{i+10} = [\theta_0 \alpha^i + (1-\theta_0) \tau^i] \int_{\theta (i-1,i-1)}^{\theta (i,i)} g(\theta_u; \mu, \sigma) d\theta_u$$
+
+where $g(\theta_u; \mu, \sigma)$ is the beta distribution of $\theta_u$. Additionally, $\theta(x,n)$ represents the probability of a worker producing $x$ good signals in $n$ periods, which by Bayes' rule can be represented as
+
+$$\theta(x,n) = \frac{\theta_0 \alpha^x (1-\alpha)^{n-x}}{\theta_0 \alpha^x (1-\alpha)^{n-x} + (1-\theta_0) \tau^x (1-\tau)^{n-x}}$$
+
+## Model Functions
+
+From above, actually running the model for this thesis requires the computation of a few integrals, in addition to minimizing the objective function $Q$ with respect to the parameters of $\Omega$. Functions for these computations are below.
+
+```{r model_fns}
+
+
+
+```
+
 
