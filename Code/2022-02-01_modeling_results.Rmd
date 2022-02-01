@@ -122,7 +122,7 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
   
   fn_val <- 0
   
-  for(i in 1:(2*n_years)){
+  for(i in 1:(2*n_years)){ # USE YEAR INSTEAD OF CELL!
     
     # Filtering the observed data to the cell in question
     
