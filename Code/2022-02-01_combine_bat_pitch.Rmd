@@ -156,7 +156,7 @@ promote_distr %>%
   write_csv('../Data/Clean/promote_distr.csv')
 
 player_mvmt %>% 
-  write_csv('../Data/Clean/mvmt_distr.csv')
+  write_csv('../Data/Clean/mvmt_obsv.csv') # indicating observed movement
 
 ```
 

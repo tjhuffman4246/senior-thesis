@@ -1,0 +1,15 @@
+---
+title: "Modeling and Figures"
+author: "Tate Huffman"
+date: "2/1/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+## Overview
+
+This is part of a series of RMarkdown files that will break down the code contained in the document at the end of the fall. This file in particular will write the functions necessary to run the O'Flaherty and Siow model, run the model, and update the figures used in the thesis.
+
