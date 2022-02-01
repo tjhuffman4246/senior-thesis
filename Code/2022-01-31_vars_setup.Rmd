@@ -22,5 +22,39 @@ The first code chunk adds the necessary variables for signal, exits, promotions,
 
 ```{r add_vars_bat}
 
+n_years <- 10 # max number of seasons for players in the data
+
+bat_performance <- bat %>%
+  mutate(Level = case_when(Level == "Rookie" ~ 1,
+                           Level == "Short-Season A" ~ 2,
+                           Level == "A" ~ 3,
+                           Level == "Adv A" ~ 4,
+                           Level == "AA" ~ 5,
+                           Level == "AAA" ~ 6,
+                           Level == "MLB" ~ 7)) %>%  # converts level to scalar for ease of computation
+  group_by(Name) %>% 
+  mutate(yr_unique = cumsum(!duplicated(Year)), # counter of unique year played
+         exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% # whether the player exited after that year
+  ungroup() %>%
+  group_by(Name, Year) %>% 
+  # one type of promotion:
+  # if they played at multiple levels in the same year, we ASSUME this is a promotion
+  # will have to lay out more rigorously why this assumption works
+  mutate(promotion = if_else(n_distinct(Level) != 1, 1, 0)) %>%
+  ungroup() %>%
+  group_by(Name, Year) %>% 
+  mutate(Age = max(Age),
+         pa_total = sum(PA), # total PA that season, for filtering purposes
+         level_high = max(Level),
+         level_low = min(Level), # both high and low levels, so we know if next year's level is strictly greater (for promotions)
+         yr_unique = max(yr_unique),
+         exit = max(exit),
+         promotion = max(promotion)) %>% 
+  ungroup() %>% 
+  group_by(Name) %>% 
+  # promoted if you play at a strictly higher level next year
+  mutate(promotion = if_else(level_high < lead(level_low, default = 0), 1, promotion)) %>% 
+  ungroup()
+  
 ```
 
