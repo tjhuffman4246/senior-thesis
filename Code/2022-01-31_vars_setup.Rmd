@@ -57,7 +57,7 @@ bat_performance <- bat %>%
   # promoted if you play at a strictly higher level next year
   mutate(promotion = if_else(level_high < lead(level_low, default = 0), 1, promotion)) %>% 
   ungroup() %>% 
-  filter(pa_total > 20) %>% # filtering out pitchers, for the most part
+  filter(pa_total >= 40) %>% # filtering out pitchers, for the most part
   group_by(Year, Level) %>% 
   # creating OPS threshold for a good signal
   mutate(ops_threshold = quantile(OPS, probs = 1/2, na.rm = TRUE),
@@ -116,7 +116,7 @@ pitch_performance <- pitch %>%
   # promoted if you play at a strictly higher level next year
   mutate(promotion = if_else(level_high < lead(level_low, default = 0), 1, promotion)) %>% 
   ungroup() %>% 
-  filter(bf_total > 20) %>% # filtering out pitchers, for the most part
+  filter(bf_total >= 20) %>% # filtering out position players, for the most part
   group_by(Year, Level) %>% 
   # creating ERA threshold for a good signal
   # ** if altering this, because lower is better, the quantiles are reversed **
@@ -147,7 +147,7 @@ pitch_performance <- pitch %>%
 # Saving this data, so we can just read it in next time
 
 bat_performance %>% 
-  write_csv('../Data/Clean/bat/bat_performance_min_20pa.csv')
+  write_csv('../Data/Clean/bat/bat_performance_min_40pa.csv')
 
 pitch_performance %>% 
   write_csv('../Data/Clean/pitch/pitch_performance_min_20bf.csv')
