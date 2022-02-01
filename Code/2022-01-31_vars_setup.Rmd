@@ -34,6 +34,7 @@ bat_performance <- bat %>%
                            Level == "MLB" ~ 7)) %>%  # converts level to scalar for ease of computation
   group_by(Name) %>% 
   mutate(yr_unique = cumsum(!duplicated(Year)), # counter of unique year played
+         yr_debut = min(Year), # year of debut
          exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% # whether the player exited after that year
   ungroup() %>%
   group_by(Name, Year) %>% 
@@ -48,7 +49,7 @@ bat_performance <- bat %>%
          level_high = max(Level),
          level_low = min(Level), # both high and low levels, so we know if next year's level is strictly greater (for promotions)
          yr_unique = max(yr_unique),
-         yr_debut = min(Year),
+         yr_debut = yr_debut,
          exit = max(exit),
          promotion = max(promotion)) %>% 
   ungroup() %>% 
@@ -92,6 +93,7 @@ pitch_performance <- pitch %>%
                            Level == "MLB" ~ 7)) %>%  # converts level to scalar for ease of computation
   group_by(Name) %>% 
   mutate(yr_unique = cumsum(!duplicated(Year)), # counter of unique year played
+         yr_debut = min(Year), # year of debut
          exit = if_else(yr_unique == max(yr_unique), 1, 0)) %>% # whether the player exited after that year
   ungroup() %>%
   group_by(Name, Year) %>% 
@@ -106,7 +108,7 @@ pitch_performance <- pitch %>%
          level_high = max(Level),
          level_low = min(Level), # both high and low levels, so we know if next year's level is strictly greater (for promotions)
          yr_unique = max(yr_unique),
-         yr_debut = min(Year),
+         yr_debut = yr_debut,
          exit = max(exit),
          promotion = max(promotion)) %>% 
   ungroup() %>% 
