@@ -114,11 +114,11 @@ mult_term <- function(exit, n, theta_0, alpha, tau){
 
 fn_optim <- function(input_vals){ # making this a vector for optimization
   
-  theta_0 <- input_vals[1]
-  alpha <- input_vals[2]
-  tau <- input_vals[3]
-  a <- input_vals[4]
-  b <- input_vals[5]
+  a <- input_vals[1]
+  b <- input_vals[2]
+  theta_0 <- input_vals[3]
+  alpha <- input_vals[4]
+  tau <- input_vals[5]
   
   fn_val <- 0
   
@@ -133,12 +133,13 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
     
     obsv <- data$pct # observed probability
     cell <- data$cell # cell index
+    yr <- data$year # year of the data
     exit <- if_else(cell <= n_years, T, F) # whether it's an exit period
     
     # Value for predicted probability
     
-    add_val <- mult_term(exit, i, theta_0, alpha, tau) * 
-      beta_integral(exit, i, a, b, theta_0, alpha, tau)
+    add_val <- mult_term(exit, yr, theta_0, alpha, tau) * 
+      beta_integral(exit, yr, a, b, theta_0, alpha, tau)
     
     fn_val <- fn_val + (obsv - add_val)^2
   }
@@ -162,10 +163,15 @@ After declaring these functions, we want to actually run the model. We do so by 
 
 # Initial guesses for parameter values and their respective bounds
 # theta_0, alpha, tau, a, b
+# a, b, theta_0, alpha, tau
 
-init_guess <- c(0.05, 0.5, 0.5, 2, 2)
-param_bounds_low <- c(0.01, 0.05, 0.05, 1, 1)
-param_bounds_high <- c(1, 0.95, 0.95, Inf, Inf)
+init_guess <- c(2, 2, 0.1, 0.5, 0.5)
+param_bounds_low <- c(1, 1, 0, 0, 0)
+param_bounds_high <- c(Inf, Inf, 1, 1, 1)
+
+# init_guess <- c(0.1, 0.6, 0.5, 2, 2)
+# param_bounds_low <- c(0.05, 0.25, 0.24, 1, 1)
+# param_bounds_high <- c(0.2, 0.95, 0.94, Inf, Inf)
 
 # Getting some results!
 
@@ -189,11 +195,17 @@ results <- nloptr(init_guess,
 # Getting the parameters from our calculations
 
 params <- results$solution
-theta_0_pred <- params[1]
-alpha_pred <- params[2]
-tau_pred <- params[3]
-a_pred <- params[4]
-b_pred <- params[5]
+a_pred <- params[1]
+b_pred <- params[2]
+theta_0_pred <- params[3]
+alpha_pred <- params[4]
+tau_pred <- params[5]
+
+# theta_0_pred <- params[1]
+# alpha_pred <- params[2]
+# tau_pred <- params[3]
+# a_pred <- params[4]
+# b_pred <- params[5]
 
 ```
 
@@ -217,6 +229,58 @@ player_mvmt <- player_mvmt %>%
                names_to = "observed",
                values_to = "pct") %>% 
   mutate(observed = if_else(str_detect(observed, "pred"), F, T))
+
+# Exit probability
+
+player_mvmt %>% 
+  filter(exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Exit Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Promotion probability
+
+player_mvmt %>% 
+  filter(!exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Promotion Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Comparing observed exit and promotion probabilities
+
+player_mvmt %>% 
+  filter(observed) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = exit) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Promotion", "Exit"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
 
 ```
 
