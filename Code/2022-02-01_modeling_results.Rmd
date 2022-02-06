@@ -281,6 +281,5 @@ player_mvmt %>%
        caption = "Levels: Rookie through MLB") +
   theme_classic()
 
-
 ```
 
