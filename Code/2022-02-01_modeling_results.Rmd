@@ -12,7 +12,8 @@ library(optimr)
 library(nloptr)
 library(knitr)
 library(kableExtra)
-performance = read_csv('../Data/Clean/performance_min20.csv')
+player_mvmt = read_csv('../Data/Clean/mvmt_obsv.csv')
+# player_mvmt = read_csv('../Data/Clean/mvmt_obsv_unwtd.csv') # for using unweighted data
 
 n_years <- 10  # maximum number of years for a player in the data
 ```
