@@ -103,10 +103,17 @@ promote_distr_pitch <- pitch_performance %>%
   summarize(n_players = sum(promotion),
             pct = n_players / n_pitch)
 
-# Combining the data and getting unweighted promotion probabilities
+# First writing performance info to CSV
 
 performance <- bat_performance %>% 
   bind_rows(pitch_performance)
+
+performance %>% 
+  mutate(pa_bf = if_else(is.na(pa_total), bf_total, pa_total)) %>% 
+  select(-c(pa_total, bf_total)) %>% 
+  write_csv('../Data/Clean/performance_min20.csv')
+
+# Combining the data and getting unweighted promotion probabilities
 
 promote_distr_unwtd <- bat_performance %>% 
   group_by(yr_unique) %>% 
