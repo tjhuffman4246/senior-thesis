@@ -45,6 +45,53 @@ where $g(\theta_u; \mu, \sigma)$ is the beta distribution of $\theta_u$. Additio
 
 $$\theta(x,n) = \frac{\theta_0 \alpha^x (1-\alpha)^{n-x}}{\theta_0 \alpha^x (1-\alpha)^{n-x} + (1-\theta_0) \tau^x (1-\tau)^{n-x}}$$
 
+## Creating a New Data Source
+
+In order to run the model on a level-by-level basis, we need to replicate code from the February 1, 2022 file that computes promotion and exit probabilities, but doing so by minor league level. The code for this is below; the level to model can be changed by altering the leading variable that corresponds to the level used.
+
+```{r setup_level}
+
+# Setting up data for the level we're looking at
+
+level_num <- 1 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+
+# Performance filter
+
+performance_filtered <- performance %>% 
+  filter(level_low == level_num)
+
+# Total number of players
+
+n_total <- performance_filtered %>% 
+  nrow()
+
+```
+
+This computes the exit distribution for all player seasons that started at the assigned level.
+
+```{r exits}
+
+exit_distr_filtered <- performance_filtered %>% 
+  group_by(Name, is_pitcher) %>% 
+  summarise(n_year = n_distinct(Year),
+            is_pitcher = is_pitcher,
+            ever_exit = if_else(max(exit) == 1, 1, 0),) %>% # whether player ever exits
+  group_by(ever_exit, n_year, is_pitcher) %>% # in case batter and pitcher have same name
+  summarise(n_players = n_distinct(Name)) %>% 
+  ungroup() %>% 
+  group_by(ever_exit, n_year) %>% 
+  summarise(n_players = sum(n_players)) %>% 
+  ungroup() %>% 
+  # adds row for players who never exit (i.e., have 10+ year careers)
+  add_row(ever_exit = 0,
+          n_year = max((pull(select(filter(., ever_exit == 0), n_year)))),
+          n_players = sum(pull(select(filter(., ever_exit == 0), n_players)))) %>%
+  tail(n = max(.$n_year) + 1) %>% 
+  mutate(pct = n_players / n_total)
+
+```
+
+
 ## Model Application
 
 From above, actually running the model for this thesis requires the computation of a few integrals, in addition to minimizing the objective function $Q$ with respect to the parameters of $\Omega$. Functions for these computations are below.
