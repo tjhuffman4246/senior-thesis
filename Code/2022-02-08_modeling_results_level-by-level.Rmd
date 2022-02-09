@@ -91,6 +91,32 @@ exit_distr_filtered <- performance_filtered %>%
 
 ```
 
+```{r promotions}
+
+promote_distr_filtered <- performance_filtered %>% 
+  group_by(yr_unique) %>% 
+  summarize(n_players = sum(promotion),
+            pct = n_players / n_total)
+
+```
+
+```{r player_mvmt}
+
+player_mvmt_filtered <- exit_distr_filtered %>% 
+  filter(ever_exit == 1) %>%
+  add_row(ever_exit = 1,
+          n_year = (max(.$n_year)+1):10, # if there are anomalies, fill w/ blank rows
+          n_players = 0,
+          pct = 0) %>% 
+  select(pct) %>%
+  bind_rows(promote_distr_filtered %>% select(pct)) %>%
+  mutate(pct = pct / sum(.$pct), # normalizing to sum to 1 - probably not accurate?
+         year = rep(seq(1:10), 2),
+         exit = c(rep(T, 10), rep(F, 10)),
+         cell = seq(1:20))
+
+```
+
 
 ## Model Application
 
