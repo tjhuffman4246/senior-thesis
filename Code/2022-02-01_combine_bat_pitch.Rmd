@@ -109,7 +109,8 @@ performance <- bat_performance %>%
   bind_rows(pitch_performance)
 
 performance %>% 
-  mutate(pa_bf = if_else(is.na(pa_total), bf_total, pa_total)) %>% 
+  mutate(is_pitcher = if_else(is.na(pa_total), T, F),
+         pa_bf = if_else(is.na(pa_total), bf_total, pa_total)) %>% 
   select(-c(pa_total, bf_total)) %>% 
   write_csv('../Data/Clean/performance_min20.csv')
 
