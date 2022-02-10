@@ -53,7 +53,7 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 
 # Setting up data for the level we're looking at
 
-level_num <- 3 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+level_num <- 4 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 
 # Performance filter
 
