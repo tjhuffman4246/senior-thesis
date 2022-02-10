@@ -53,12 +53,18 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 
 # Setting up data for the level we're looking at
 
-level_num <- 6 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+level_num <- 1 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 
 # Performance filter
 
 performance_filtered <- performance %>% 
-  filter(level_low == level_num) %>% 
+  group_by(Name) %>% 
+  mutate(max_level_sofar = if_else(yr_unique == 1, 
+                                   0,
+                                   cummax(level_high))) %>% 
+  ungroup() %>% 
+  filter(level_low == level_num, # lowest level this year is the level in question
+         max_level_sofar <= level_num) %>% # hasn't played above this level
   group_by(Name) %>% 
   # we're interested whether people exit or are promoted from the given level
   mutate(ever_exit = if_else(max(exit) == 1, 1, 0)) %>% 
