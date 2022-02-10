@@ -54,16 +54,24 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 # Setting up data for the level we're looking at
 
 level_num <- 1 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+n_years <- 10 # the number of seasons to look at in the data
 
 # Performance filter
 
 performance_filtered <- performance %>% 
-  filter(level_low == level_num)
+  filter(level_low == level_num) %>% 
+  group_by(Name) %>% 
+  # we're interested whether people exit or are promoted from the given level
+  mutate(ever_exit = if_else(max(exit) == 1, 1, 0)) %>% 
+  ungroup()
 
 # Total number of players
 
 n_total <- performance_filtered %>% 
-  nrow()
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
 
 ```
 
@@ -71,11 +79,11 @@ This computes the exit distribution for all player seasons that started at the a
 
 ```{r exits}
 
-exit_distr_filtered <- performance_filtered %>% 
+exit_distr_filtered <- performance_filtered %>%  
   group_by(Name, is_pitcher) %>% 
-  summarise(n_year = n_distinct(Year),
+  summarise(n_year = yr_unique,
             is_pitcher = is_pitcher,
-            ever_exit = if_else(max(exit) == 1, 1, 0),) %>% # whether player ever exits
+            ever_exit = ever_exit) %>% # whether player ever exits from this level
   group_by(ever_exit, n_year, is_pitcher) %>% # in case batter and pitcher have same name
   summarise(n_players = n_distinct(Name)) %>% 
   ungroup() %>% 
@@ -86,7 +94,7 @@ exit_distr_filtered <- performance_filtered %>%
   add_row(ever_exit = 0,
           n_year = max((pull(select(filter(., ever_exit == 0), n_year)))),
           n_players = sum(pull(select(filter(., ever_exit == 0), n_players)))) %>%
-  tail(n = max(.$n_year) + 1) %>% 
+  tail(n = max(.$n_year) + 1) %>%
   mutate(pct = n_players / n_total)
 
 ```
@@ -104,10 +112,10 @@ promote_distr_filtered <- performance_filtered %>%
 
 player_mvmt_filtered <- exit_distr_filtered %>% 
   filter(ever_exit == 1) %>%
-  add_row(ever_exit = 1,
-          n_year = (max(.$n_year)+1):10, # if there are anomalies, fill w/ blank rows
-          n_players = 0,
-          pct = 0) %>% 
+  # add_row(ever_exit = 1,
+  #         n_year = (max(.$n_year)+1):10, # if there are anomalies, fill w/ blank rows
+  #         n_players = 0,
+  #         pct = 0) %>% 
   select(pct) %>%
   bind_rows(promote_distr_filtered %>% select(pct)) %>%
   mutate(pct = pct / sum(.$pct), # normalizing to sum to 1 - probably not accurate?
@@ -116,7 +124,6 @@ player_mvmt_filtered <- exit_distr_filtered %>%
          cell = seq(1:20))
 
 ```
-
 
 ## Model Application
 
@@ -201,7 +208,7 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
     
     # Filtering the observed data to the cell in question
     
-    data <- player_mvmt %>% 
+    data <- player_mvmt_filtered %>% 
       filter(cell == i)
     
     # Isolating variables for ease of use
@@ -233,3 +240,145 @@ fn_ineq <- function(input_vals){
 ```
 
 After declaring these functions, we want to actually run the model. We do so by creating a set of initial guess parameters, which have upper and lower sanity-check bounds (to be altered?). The version run here works off of these constraints, and commented out is an unconstrained version that is less accurate but is retained for potential use.
+
+```{r run_model}
+
+# Initial guesses for parameter values and their respective bounds
+# theta_0, alpha, tau, a, b
+# a, b, theta_0, alpha, tau
+
+init_guess <- c(2, 2, 0.1, 0.3, 0.2)
+param_bounds_low <- c(0, 0, 0, 0, 0)
+param_bounds_high <- c(Inf, Inf, 1, 1, 1)
+
+# init_guess <- c(0.1, 0.6, 0.5, 2, 2)
+# param_bounds_low <- c(0.05, 0.25, 0.24, 1, 1)
+# param_bounds_high <- c(0.2, 0.95, 0.94, Inf, Inf)
+
+# Getting some results!
+
+# Unconstrained optimization
+
+# results <- optim(init_guess, fn_optim,
+#                  lower = param_bounds_low,
+#                  upper = param_bounds_high,
+#                  method = "L-BFGS-B")
+
+# Constrained optimization
+
+results <- nloptr(init_guess,
+                  fn_optim,
+                  lb = param_bounds_low,
+                  ub = param_bounds_high,
+                  eval_g_ineq = fn_ineq,
+                  opts = list("algorithm" = "NLOPT_LN_COBYLA",
+                              "xtol_rel" = 1.0e-8))
+
+# Getting the parameters from our calculations
+
+params <- results$solution
+a_pred <- params[1]
+b_pred <- params[2]
+theta_0_pred <- params[3]
+alpha_pred <- params[4]
+tau_pred <- params[5]
+
+# theta_0_pred <- params[1]
+# alpha_pred <- params[2]
+# tau_pred <- params[3]
+# a_pred <- params[4]
+# b_pred <- params[5]
+
+```
+
+## Figures
+
+We now want to examine how accurate these predictions are. First, we add the above info to the player movement table, and then we use `ggplot` to examine it visually.
+
+```{r figures}
+
+# Adding predicted percent of players falling into cell
+
+# LOOK AT THIS AGAIN - ARE WE SURE IT'S 100% CORRECT?
+
+player_mvmt_filtered <- player_mvmt_filtered %>% 
+  rowwise() %>% # applying the model row-by-row
+  mutate(pred_pct = mult_term(exit, year, theta_0_pred, alpha_pred, tau_pred) * 
+           beta_integral(exit, year, a_pred, b_pred, 
+                         theta_0_pred, alpha_pred, tau_pred)) %>% 
+  ungroup() %>% 
+  pivot_longer(cols = ends_with("pct"),
+               names_to = "observed",
+               values_to = "pct") %>% 
+  mutate(observed = if_else(str_detect(observed, "pred"), F, T))
+         # pct = if_else((!exit & !observed), pct*n_promotions, pct)) # times omitted promotes
+
+# Exit probability
+
+player_mvmt_filtered %>% 
+  filter(exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Exit Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Promotion probability
+
+player_mvmt_filtered %>% 
+  filter(!exit) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = observed) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Predicted", "Observed"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Promotion Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Comparing observed exit and promotion probabilities
+
+player_mvmt_filtered %>% 
+  filter(observed) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = exit) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Promotion", "Exit"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+# Comparing predicted exit and promotion probabilities
+
+player_mvmt_filtered %>% 
+  filter(!observed) %>% 
+  ggplot() +
+  aes(x = year, y = 100*pct, color = exit) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(0,10,2)) +
+  scale_y_continuous(breaks = seq(0,30,5)) +
+  scale_color_manual(name = "Probability",
+                     labels = c("Promotion", "Exit"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Probability (Percent)",
+       caption = "Levels: Rookie through MLB") +
+  theme_classic()
+
+```

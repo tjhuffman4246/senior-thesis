@@ -212,7 +212,7 @@ tau_pred <- params[5]
 
 ## Figures
 
-We now want to examine how accurate these predictions are. First, we add the above info to the player movemnt table, and then we use `ggplot` to examine it visually.
+We now want to examine how accurate these predictions are. First, we add the above info to the player movement table, and then we use `ggplot` to examine it visually.
 
 ```{r figures}
 
