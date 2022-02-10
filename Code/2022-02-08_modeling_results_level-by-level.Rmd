@@ -382,3 +382,12 @@ player_mvmt_filtered %>%
   theme_classic()
 
 ```
+
+```{r save_results}
+
+player_mvmt_filtered %>% 
+  select(-cell) %>% 
+  write_csv("../Scratch/2022-02-10 Results/Rookie/2022-02-10_result_probs_rookie.csv")
+
+```
+
