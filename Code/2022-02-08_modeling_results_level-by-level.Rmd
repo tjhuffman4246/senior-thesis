@@ -60,13 +60,13 @@ level_num <- 1 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 performance_filtered <- performance %>% 
   group_by(Name) %>% 
   mutate(max_level_sofar = if_else(yr_unique == 1, 
-                                   0,
+                                   0, # max level is 0 if this is first year in system
                                    cummax(level_high))) %>% 
   ungroup() %>% 
   filter(level_low == level_num, # lowest level this year is the level in question
          max_level_sofar <= level_num) %>% # hasn't played above this level
   group_by(Name) %>% 
-  # we're interested whether people exit or are promoted from the given level
+  # we're interested whether people exit or are promoted FROM THE GIVEN LEVEL
   mutate(ever_exit = if_else(max(exit) == 1, 1, 0)) %>% 
   ungroup()
 
@@ -94,12 +94,36 @@ exit_distr_filtered <- performance_filtered %>%
   ungroup() %>% 
   group_by(ever_exit, n_year) %>% 
   summarise(n_players = sum(n_players)) %>% 
+  ungroup()
+
+# in the case where there's values for years 1-10 in the data
+# adds row for players who never exit (i.e., have 10+ year careers)
+
+# exit_distr_filtered <- exit_distr_filtered %>% 
+  # add_row(ever_exit = 0,
+  #         n_year = max((pull(select(filter(., ever_exit == 0), n_year)))),
+  #         n_players = sum(pull(select(filter(., ever_exit == 0), n_players)))) %>%
+  # tail(n = max(.$n_year) + 1) %>%
+  # mutate(pct = n_players / n_total)
+
+# in the case where there are some values missing
+# from https://stackoverflow.com/questions/55064337/fill-in-missing-rows-in-r-data-frame 
+
+exit_distr_filtered <- exit_distr_filtered %>% 
+  group_by(ever_exit) %>% 
+  mutate(yr_low = 1, yr_high = 10) %>% 
+  select(-n_year, -n_players) %>% 
+  distinct() %>% 
+  expand(n_year = 1:10, yr_low) %>% 
+  select(-yr_low) %>% 
+  left_join(exit_distr_filtered,
+            by = c("ever_exit", "n_year")) %>% 
+  replace(is.na(.), 0) %>% 
   ungroup() %>% 
-  # adds row for players who never exit (i.e., have 10+ year careers)
   add_row(ever_exit = 0,
           n_year = max((pull(select(filter(., ever_exit == 0), n_year)))),
-          n_players = sum(pull(select(filter(., ever_exit == 0), n_players)))) %>%
-  tail(n = max(.$n_year) + 1) %>%
+          n_players = sum(pull(select(filter(., ever_exit == 0), n_players)))) %>% 
+  tail(n = max(.$n_year) + 1) %>% 
   mutate(pct = n_players / n_total)
 
 ```
@@ -110,6 +134,22 @@ promote_distr_filtered <- performance_filtered %>%
   group_by(yr_unique) %>% 
   summarize(n_players = sum(promotion),
             pct = n_players / n_total)
+
+# Similar stuff as above for filling in missing columns with zero
+
+promote_distr_filtered <- promote_distr_filtered %>% 
+  mutate(val = TRUE) %>% 
+  group_by(val) %>% 
+  mutate(yr_low = 1, yr_high = 10) %>% 
+  select(-yr_unique, -n_players, -pct) %>% 
+  distinct() %>% 
+  expand(yr_unique = 1:10, yr_low) %>% 
+  select(-yr_low) %>% 
+  left_join(promote_distr_filtered,
+            by = c("yr_unique")) %>%
+  replace(is.na(.), 0) %>%
+  ungroup() %>% 
+  select(-val)
 
 ```
 
