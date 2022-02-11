@@ -53,7 +53,7 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 
 # Setting up data for the level we're looking at
 
-level_num <- 3 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+level_num <- 1 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 
 # Performance filter
 
@@ -278,7 +278,14 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
 
 fn_ineq <- function(input_vals){
   
-  return(input_vals[3] - input_vals[2]) # ensures that alpha >= tau
+  # Original constraint in 1.9 of O'Flaherty/Siow
+  # return(1 - (((input_vals[5] / input_vals[4])^(n_years-1)) * (1-input_vals[5]) / (1 - input_vals[4]))) 
+  
+  # Modified constraint in 1.9 of O'Flaherty/Siow
+  return(((1-input_vals[3])/input_vals[3]) * (input_vals[5]/input_vals[4]) * ((1-input_vals[4])/(1-input_vals[5])) - (1 - (input_vals[1]/(input_vals[1]+input_vals[2]))))
+  
+  # Ensures that alpha >= tau
+  # return(input_vals[5] - input_vals[4]) 
   
 }
 
@@ -432,7 +439,7 @@ player_mvmt_filtered %>%
 
 player_mvmt_filtered %>% 
   select(-cell) %>% 
-  write_csv("../Scratch/2022-02-10 Results (Filtered)/A/2022-02-10_result_probs_a.csv")
+  write_csv("../Scratch/2022-02-10 Results (Filtered)/Adv A/2022-02-10_result_probs_adv-a.csv")
 
 ```
 
