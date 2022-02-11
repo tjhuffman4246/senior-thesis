@@ -439,7 +439,7 @@ player_mvmt_filtered %>%
 
 player_mvmt_filtered %>% 
   select(-cell) %>% 
-  write_csv("../Scratch/2022-02-10 Results (Filtered)/Adv A/2022-02-10_result_probs_adv-a.csv")
+  write_csv("../Scratch/2022-02-11 Results/Rookie/2022-02-11_result_probs_rookie.csv")
 
 ```
 
