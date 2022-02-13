@@ -53,7 +53,7 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 
 # Setting up data for the level we're looking at
 
-level_num <- 6 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+level_num <- 3 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 
 # Performance filter
 
@@ -261,7 +261,7 @@ fn_optim <- function(input_vals){ # making this a vector for optimization
     obsv <- data$pct # observed probability
     cell <- data$cell # cell index
     yr <- data$year # year of the data
-    exit <- if_else(cell <= n_years, T, F) # whether it's an exit period
+    exit <- data$exit # whether it's an exit period
     
     # Value for predicted probability
     
@@ -299,7 +299,7 @@ After declaring these functions, we want to actually run the model. We do so by 
 # theta_0, alpha, tau, a, b
 # a, b, theta_0, alpha, tau
 
-init_guess <- c(2, 2, 0.1, 0.3, 0.2)
+init_guess <- c(2, 2, 0.1, 0.1, 0.1)
 param_bounds_low <- c(0, 0, 0, 0, 0)
 param_bounds_high <- c(Inf, Inf, 1, 1, 1)
 
@@ -318,11 +318,11 @@ param_bounds_high <- c(Inf, Inf, 1, 1, 1)
 
 # Constrained optimization
 
-results <- nloptr(init_guess,
-                  fn_optim,
+results <- nloptr(x0 = init_guess,
+                  eval_f = fn_optim,
+                  eval_g_ineq = fn_ineq,
                   lb = param_bounds_low,
                   ub = param_bounds_high,
-                  eval_g_ineq = fn_ineq,
                   opts = list("algorithm" = "NLOPT_LN_COBYLA",
                               "xtol_rel" = 1.0e-8))
 
