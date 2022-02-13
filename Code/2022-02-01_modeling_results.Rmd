@@ -195,9 +195,7 @@ results <- nloptr(x0 = init_guess,
                   eval_g_ineq = fn_ineq,
                   lb = param_bounds_low,
                   ub = param_bounds_high,
-                  opts = list("algorithm" = "NLOPT_LN_AUGLAG_EQ",
-                              "local_opts" = list("algorithm" = "NLOPT_LN_COBYLA", 
-                                                  "xtol_rel" = 1.0e-8 ),
+                  opts = list("algorithm" = "NLOPT_GN_ISRES",
                               "xtol_rel" = 1.0e-8))
 
 # Getting the parameters from our calculations
