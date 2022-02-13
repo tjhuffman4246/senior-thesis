@@ -190,12 +190,14 @@ param_bounds_high <- c(Inf, Inf, 1, 1, 1)
 
 # Constrained optimization
 
-results <- nloptr(init_guess,
-                  fn_optim,
+results <- nloptr(x0 = init_guess,
+                  eval_f = fn_optim,
+                  eval_g_ineq = fn_ineq,
                   lb = param_bounds_low,
                   ub = param_bounds_high,
-                  eval_g_ineq = fn_ineq,
-                  opts = list("algorithm" = "NLOPT_LN_COBYLA",
+                  opts = list("algorithm" = "NLOPT_LN_AUGLAG",
+                              "local_opts" = list("algorithm" = "NLOPT_LN_COBYLA", 
+                                                  "xtol_rel" = 1.0e-8 ),
                               "xtol_rel" = 1.0e-8))
 
 # Getting the parameters from our calculations
