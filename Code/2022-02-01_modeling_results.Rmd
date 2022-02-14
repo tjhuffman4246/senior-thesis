@@ -313,7 +313,7 @@ We then save these results and figures so we have a reference for future work.
 
 player_mvmt %>% 
   select(-cell) %>% 
-  write_csv("../Scratch/2022-02-06 Results/2022-02-06_result_probs.csv")
+  write_csv("../Scratch/2022-02-13 Results/2022-02-13_result_probs.csv")
 
 ```
 
