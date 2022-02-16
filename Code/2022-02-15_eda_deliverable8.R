@@ -279,3 +279,22 @@ player_summary = tibble(
               quantile(n_pa_bf_min, .9)[[1]]),
   SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_pa_bf_min))
 ) # players who have big playing time get injured and then excluded from data?
+
+# Replicating this analysis, but only for players who make the majors
+# Getting somebody's most common position (pitcher or hitter)
+# Filtering out the seasons where they were not doing that thing
+
+summary_stats_mlb <- summary_stats_all %>% 
+  group_by(Name) %>% 
+  filter(any(Level == 'MLB')) %>% 
+  mutate(is_max = if_else(pa_bf == max(pa_bf), T, F),
+         pitcher = (is_max & is_pitcher),
+         pitcher = as.logical(max(pitcher))) %>% 
+  filter(is_pitcher == pitcher) %>% 
+  ungroup() %>% 
+  arrange(Name) %>% 
+  select(-is_max, -pitcher) %>% 
+  inner_join(performance_all %>% 
+               select(Name, Year, yr_debut, is_pitcher),
+             by = c("Name", "Year", "is_pitcher"))
+
