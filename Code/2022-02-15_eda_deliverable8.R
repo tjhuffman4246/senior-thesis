@@ -298,3 +298,56 @@ summary_stats_mlb <- summary_stats_all %>%
                select(Name, Year, yr_debut, is_pitcher),
              by = c("Name", "Year", "is_pitcher"))
 
+# Number of players
+
+n_mlb <- summary_stats_mlb %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played
+
+n_years_mlb <- summary_stats_mlb %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for
+
+n_teams_mlb <- summary_stats_mlb %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at
+
+n_levels_mlb <- summary_stats_mlb %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of PA/BF per year
+
+n_pa_bf_mlb <- summary_stats_mlb %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa_bf_total = sum(pa_bf)) %>% 
+  select(pa_bf_total) %>% 
+  pull()
+
+mlb_player_summary = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "PA/BF per Year"),
+  M_1  = c(mean(n_years_mlb), mean(n_teams_mlb), mean(n_levels_mlb), mean(n_pa_bf_mlb)),
+  Pct10_1 = c(quantile(n_years_mlb, .1)[[1]], 
+              quantile(n_teams_mlb, .1)[[1]], 
+              quantile(n_levels_mlb, .1)[[1]], 
+              quantile(n_pa_bf_mlb, .1)[[1]]),
+  Pct90_1 = c(quantile(n_years_mlb, .9)[[1]], 
+              quantile(n_teams_mlb, .9)[[1]], 
+              quantile(n_levels_mlb, .9)[[1]], 
+              quantile(n_pa_bf_mlb, .9)[[1]]),
+  SD_1 = c(sd(n_years_mlb), sd(n_teams_mlb), sd(n_levels_mlb), sd(n_pa_bf_mlb))
+) 
