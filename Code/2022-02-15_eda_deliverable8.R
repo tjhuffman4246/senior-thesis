@@ -138,4 +138,30 @@ performance_all <- bat_performance_all %>%
 performance_all %>% 
   write_csv('Data/Clean/performance_all.csv')
 
+# Filtering the batting and pitching data
+# Done by taking the names that are in the performance data
+# Doing this because the years don't align with previous EDA
 
+names_all <- performance_all %>% 
+  ungroup() %>% 
+  select(Name) %>% 
+  unique() %>% 
+  pull()
+
+names_min20 <- performance_min20 %>% 
+  ungroup() %>% 
+  select(Name) %>% 
+  unique() %>% 
+  pull()
+
+bat_filtered_all <- bat %>% 
+  filter(Name %in% names_all)
+
+pitch_filtered_all <- pitch %>% 
+  filter(Name %in% names_all)
+
+bat_filtered_min20 <- bat_min_pa_20 %>% 
+  filter(Name %in% names_min20)
+
+pitch_filtered_min20 <- pitch_min_bf_20 %>% 
+  filter(Name %in% names_min20)
