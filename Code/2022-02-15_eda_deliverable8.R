@@ -155,13 +155,127 @@ names_min20 <- performance_min20 %>%
   pull()
 
 bat_filtered_all <- bat %>% 
-  filter(Name %in% names_all)
+  filter(Name %in% names_all) %>% 
+  mutate(pa_bf = PA,
+         is_pitcher = F) %>% 
+  select(Name, Year, Level, Org, pa_bf, is_pitcher)
 
 pitch_filtered_all <- pitch %>% 
-  filter(Name %in% names_all)
+  filter(Name %in% names_all) %>% 
+  mutate(pa_bf = BF,
+         is_pitcher = T) %>% 
+  select(Name, Year, Level, Org, pa_bf, is_pitcher)
 
 bat_filtered_min20 <- bat_min_pa_20 %>% 
-  filter(Name %in% names_min20)
+  filter(Name %in% names_min20) %>% 
+  mutate(pa_bf = PA,
+         is_pitcher = F) %>% 
+  select(Name, Year, Level, Org, pa_bf, is_pitcher)
 
 pitch_filtered_min20 <- pitch_min_bf_20 %>% 
-  filter(Name %in% names_min20)
+  filter(Name %in% names_min20) %>% 
+  mutate(pa_bf = BF,
+         is_pitcher = T) %>% 
+  select(Name, Year, Level, Org, pa_bf, is_pitcher)
+
+# Combining data into singular dataframes
+
+summary_stats_all <- bat_filtered_all %>% 
+  bind_rows(pitch_filtered_all)
+
+summary_stats_min20 <- bat_filtered_min20 %>% 
+  bind_rows(pitch_filtered_min20)
+
+# Number of players, both with minimums and without
+
+n_all <- summary_stats_all %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+n_min <- summary_stats_min20 %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+# Number of years played, both with minimums and without
+
+n_years_all <- summary_stats_all %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+n_years_min <- summary_stats_min20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Year)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of teams played for, both with minimums and without
+
+n_teams_all <- summary_stats_all %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+n_teams_min <- summary_stats_min20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Org)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of levels played at, both with minimums and without
+
+n_levels_all <- summary_stats_all %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+n_levels_min <- summary_stats_min20 %>% 
+  group_by(Name) %>% 
+  summarize(count = n_distinct(Level)) %>% 
+  select(count) %>% 
+  pull()
+
+# Number of PA/BF per year, both with minimums and without
+
+n_pa_bf_all <- summary_stats_all %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa_bf_total = sum(pa_bf)) %>% 
+  select(pa_bf_total) %>% 
+  pull()
+
+n_pa_bf_min <- summary_stats_min20 %>% 
+  group_by(Name, Year) %>% 
+  summarize(pa_bf_total = sum(pa_bf)) %>% 
+  select(pa_bf_total) %>% 
+  pull()
+
+player_summary = tibble(
+  Measure = c("Years Played", "Organizations", "Levels", "PA/BF per Year"),
+  M_1  = c(mean(n_years_all), mean(n_teams_all), mean(n_levels_all), mean(n_pa_bf_all)),
+  Pct10_1 = c(quantile(n_years_all, .1)[[1]], 
+              quantile(n_teams_all, .1)[[1]], 
+              quantile(n_levels_all, .1)[[1]], 
+              quantile(n_pa_bf_all, .1)[[1]]),
+  Pct90_1 = c(quantile(n_years_all, .9)[[1]], 
+              quantile(n_teams_all, .9)[[1]], 
+              quantile(n_levels_all, .9)[[1]], 
+              quantile(n_pa_bf_all, .9)[[1]]),
+  SD_1 = c(sd(n_years_all), sd(n_teams_all), sd(n_levels_all), sd(n_pa_bf_all)),
+  M_2  = c(mean(n_years_min), mean(n_teams_min), mean(n_levels_min), mean(n_pa_bf_min)),
+  Pct10_2 = c(quantile(n_years_min, .1)[[1]], 
+              quantile(n_teams_min, .1)[[1]], 
+              quantile(n_levels_min, .1)[[1]], 
+              quantile(n_pa_bf_min, .1)[[1]]),
+  Pct90_2 = c(quantile(n_years_min, .9)[[1]], 
+              quantile(n_teams_min, .9)[[1]], 
+              quantile(n_levels_min, .9)[[1]], 
+              quantile(n_pa_bf_min, .9)[[1]]),
+  SD_2 = c(sd(n_years_min), sd(n_teams_min), sd(n_levels_min), sd(n_pa_bf_min))
+) # players who have big playing time get injured and then excluded from data?
