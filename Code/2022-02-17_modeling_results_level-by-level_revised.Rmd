@@ -53,7 +53,7 @@ In order to run the model on a level-by-level basis, we need to replicate code f
 
 # Setting up data for the level we're looking at
 
-level_num <- 4 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
+level_num <- 6 # 1 corresponds to Rookie, 2 to Short-Season-A, ..., 7 to MLB
 
 # Performance filter
 
@@ -299,7 +299,7 @@ After declaring these functions, we want to actually run the model. We do so by 
 # theta_0, alpha, tau, a, b
 # a, b, theta_0, alpha, tau
 
-init_guess <- c(50, 50, 0.1, 0.3, 0.2)
+init_guess <- c(45, 45, 0.1, 0.3, 0.2)
 param_bounds_low <- c(0, 0, 0, 0, 0)
 param_bounds_high <- c(Inf, Inf, 1, 1, 1)
 
@@ -439,7 +439,7 @@ player_mvmt_filtered %>%
 
 player_mvmt_filtered %>% 
   select(-cell) %>% 
-  write_csv("../Scratch/2022-02-17 Results/Adv A/2022-02-17_result_probs_adv-a.csv")
+  write_csv("../Scratch/2022-02-17 Results/AAA/2022-02-17_result_probs_aaa.csv")
 
 params <- tibble(
   a = a_pred,
@@ -450,6 +450,6 @@ params <- tibble(
 )
 
 params %>% 
-  write_csv("../Scratch/2022-02-17 Results/Adv A/2022-02-17_result_params_adv-a.csv")
+  write_csv("../Scratch/2022-02-17 Results/AAA/2022-02-17_result_params_aaa.csv")
 
 ```
