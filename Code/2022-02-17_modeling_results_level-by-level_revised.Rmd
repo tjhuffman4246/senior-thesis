@@ -439,6 +439,17 @@ player_mvmt_filtered %>%
 
 player_mvmt_filtered %>% 
   select(-cell) %>% 
-  write_csv("../Scratch/2022-02-11 Results/AAA/2022-02-11_result_probs_aaa.csv")
+  write_csv("../Scratch/2022-02-17 Results/Rookie/2022-02-17_result_probs_rookie.csv")
+
+params <- tibble(
+  a = a_pred,
+  b = b_pred,
+  theta_0 = theta_0_pred,
+  alpha = alpha_pred,
+  tau = tau_pred
+)
+
+params %>% 
+  write_csv("../Scratch/2022-02-17 Results/Rookie/2022-02-17_result_params_rookie.csv")
 
 ```
