@@ -472,6 +472,39 @@ exit_distr %>%
   mutate(`10+` = 100 - sum(c_across(`1`:`9`))) %>% 
   ungroup()
 
-# Transition matrix for all players in the data
+# T+1 transition matrix for all players in the data (1999-2009 debuts)
   
-
+transition_matrix <- performance_all %>% 
+  filter(yr_unique <= 2) %>% 
+  arrange(Name) %>% 
+  group_by(Name, yr_unique) %>% 
+  filter(pa_bf == max(pa_bf)) %>% 
+  ungroup() %>% 
+  group_by(Name) %>% 
+  mutate(next_lev = lead(level_low),
+         next_lev = if_else(yr_unique == 2, -1, next_lev),
+         next_lev = replace_na(next_lev, 0)) %>% 
+  ungroup() %>% 
+  filter(yr_unique == 1) %>% 
+  group_by(level_low, next_lev) %>% 
+  summarize(ct = n_distinct(Name)) %>% 
+  ungroup() %>% 
+  group_by(level_low) %>% 
+  mutate(total = sum(ct),
+         pct = 100 * (ct / total))
+  
+  # group_by(yr_unique, level_low) %>% 
+  # summarize(count = n_distinct(Name)) %>% 
+  # ungroup() %>% 
+  # group_by(yr_unique) %>% 
+  # mutate(total = sum(count)) %>% 
+  # ungroup() %>%
+  # mutate(total_start = max(total),
+  #        pct = 100 * (count / total_start)) %>% 
+  # ungroup() %>% 
+  # add_row(yr_unique = 2,
+  #         level_low = 0,
+  #         count = .$total_start[1] - min(.$total),
+  #         total = min(.$total),
+  #         total_start = max(.$total),
+  #         pct = 100 * (count / total_start))
