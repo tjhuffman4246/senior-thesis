@@ -351,3 +351,127 @@ mlb_player_summary = tibble(
               quantile(n_pa_bf_mlb, .9)[[1]]),
   SD_1 = c(sd(n_years_mlb), sd(n_teams_mlb), sd(n_levels_mlb), sd(n_pa_bf_mlb))
 ) 
+
+# Graph of player count by year
+
+# Getting number of unique players in each year, and joining into one dataframe
+
+bat_ct <- bat %>% 
+  group_by(Year) %>% 
+  summarize(ct = n_distinct(Name),
+            pos = 'bat')
+
+pitch_ct <- pitch %>% 
+  group_by(Year) %>% 
+  summarize(ct = n_distinct(Name),
+            pos = 'pitch')
+
+player_ct <- bat_ct %>% 
+  rbind(pitch_ct)
+
+# Plotting this via ggplot
+
+ggplot(player_ct, aes(x = Year, y = ct, color = pos)) +
+  geom_line() +
+  scale_color_manual(name = "Position",
+                     labels = c("Batters", "Pitchers"),
+                     values = c("red", "blue")) +
+  labs(x = "Year",
+       y = "Player Count",
+       caption = "Levels: Rookie, Short-Season A, Low-A, High-A, Double-A, Triple-A, MLB",
+       color = "Position") +
+  scale_x_continuous(breaks = seq(1998, 2019, by = 4)) +
+  scale_y_continuous(breaks = seq(3000, 4500, by = 250)) +
+  theme_classic()
+
+# Graph: hazard rate graph
+# Percent of entire population that exits in that period
+
+# Batters
+
+n_bat <- bat %>% # number of unique batters
+  filter(Name %in% names_all) %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+exit_distr_bat <- bat %>% # distribution of player exit times
+  filter(Name %in% names_all) %>% 
+  group_by(Name) %>%
+  summarise(n_years = n_distinct(Year)) %>% 
+  group_by(n_years) %>% 
+  summarise(n_players = n_distinct(Name)) %>% 
+  mutate(pct = 100 * (n_players / n_bat),
+         cum_pct = cumsum(pct),
+         pos = 'Batters') # 100x multiplier to make it a true percent
+
+# Pitchers
+
+n_pitch <- pitch %>% # number of unique pitchers
+  filter(Name %in% names_all) %>% 
+  select(Name) %>% 
+  pull() %>% 
+  unique() %>% 
+  length()
+
+exit_distr_pitch <- pitch %>% # distribution of player exit times
+  filter(Name %in% names_all) %>%
+  group_by(Name) %>%
+  summarise(n_years = n_distinct(Year)) %>% 
+  group_by(n_years) %>% 
+  summarise(n_players = n_distinct(Name)) %>% 
+  mutate(pct = 100 * (n_players / n_pitch),
+         cum_pct = cumsum(pct),
+         pos = 'Pitchers') # 100x multiplier to make it a true percent
+
+# Merging the dataframes
+
+exit_distr <- exit_distr_bat %>% 
+  bind_rows(exit_distr_pitch) %>% 
+  add_row(n_years = 0,
+          n_players = 0,
+          pct = 0,
+          cum_pct = 0,
+          pos = "Batters",
+          .before = 1) %>% 
+  add_row(n_years = 0,
+          n_players = 0,
+          pct = 0,
+          cum_pct = 0,
+          pos = "Pitchers",
+          .before = 2)
+
+# Graph
+
+exit_distr %>% 
+  ggplot() +
+  aes(x = n_years, y = cum_pct, color = pos) +
+  geom_line() +
+  geom_hline(yintercept = 0,
+             linetype = 'dotted',
+             col = 'black') +
+  scale_color_manual(name = "Position",
+                     labels = c("Batters", "Pitchers"),
+                     values = c("red", "blue")) +
+  labs(x = "Number of Seasons Played",
+       y = "Cumulative Percent Exited",
+       caption = "Levels: Rookie through MLB",
+       color = "Position") +
+  scale_y_continuous(breaks = seq(20, 100, by = 20)) +
+  theme_classic()
+
+# Table
+
+exit_distr %>% 
+  select(-n_players) %>% 
+  pivot_wider(names_from = n_years,
+              values_from = cum_pct) # %>% 
+  select(pos:`9`) %>% 
+  rowwise() %>% 
+  mutate(`10+` = 100 - sum(c_across(`1`:`9`))) %>% 
+  ungroup()
+
+# Transition matrix for all players in the data
+  
+
