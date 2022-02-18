@@ -30,4 +30,8 @@ params_all <- params_rookie %>%
             params_low_a,
             params_high_a,
             params_aa,
-            params_aaa)
+            params_aaa) %>% 
+  mutate(mu = a / (a + b),
+         sigma = sqrt((a * b) / ((a + b)^2 * (a + b + 1))))
+
+# Getting statistics across 
