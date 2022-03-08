@@ -78,7 +78,7 @@ ggplot(exit_signals_revised_pct, aes(x = yr_unique, y = 100 * pct,
   geom_line() +
   scale_color_manual(name = "Signal",
                      labels = c("Bad", "Meh", "Good"),
-                     values = c("red", "green", "blue")) +
+                     values = c("red", "green3", "blue")) +
   labs(x = "Year of Career",
        y = "Percent of Population Exiting",
        caption = "Levels: Rookie through MLB",
