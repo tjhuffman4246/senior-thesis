@@ -8,8 +8,9 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 library(tidyverse)
-bat_performance = read_csv('../Data/Clean/bat/bat_performance_min_20pa.csv')
-pitch_performance = read_csv('../Data/Clean/pitch/pitch_performance_min_20bf.csv')
+# Can change these dataframes based on the performance signal data
+bat_performance = read_csv('../Data/Clean/bat/bat_performance_min-20pa_revised-pct.csv')
+pitch_performance = read_csv('../Data/Clean/pitch/pitch_performance_min-20bf_revised-pct.csv')
 
 n_years <- 10 # maximum number of years for a player in the data
 ```
@@ -112,7 +113,7 @@ performance %>%
   mutate(is_pitcher = if_else(is.na(pa_total), T, F),
          pa_bf = if_else(is.na(pa_total), bf_total, pa_total)) %>% 
   select(-c(pa_total, bf_total)) %>% 
-  write_csv('../Data/Clean/performance_min20.csv')
+  write_csv('../Data/Clean/performance_min20_revised-pct.csv')
 
 # Combining the data and getting unweighted promotion probabilities
 
@@ -181,16 +182,16 @@ player_mvmt <- exit_distr %>%
 # Writing this info to CSV files
 
 exit_distr %>% 
-  write_csv('../Data/Clean/exit_distr.csv')
+  write_csv('../Data/Clean/exit_distr_revised-pct.csv')
 
 promote_distr %>% 
-  write_csv('../Data/Clean/promote_distr.csv')
+  write_csv('../Data/Clean/promote_distr_revised-pct.csv')
 
 player_mvmt_unwtd %>% 
-  write_csv('../Data/Clean/mvmt_obsv_unwtd.csv')
+  write_csv('../Data/Clean/mvmt_obsv_unwtd_revised-pct.csv')
 
 player_mvmt %>% 
-  write_csv('../Data/Clean/mvmt_obsv.csv') # indicating observed movement
+  write_csv('../Data/Clean/mvmt_obsv_revised-pct.csv') # indicating observed movement
 
 ```
 
