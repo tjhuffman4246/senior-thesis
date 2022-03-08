@@ -62,8 +62,12 @@ bat_performance <- bat %>%
   group_by(Year, Level) %>% 
   # creating OPS threshold for a good signal
   # 2/3 percentile this time instead of 1/2
-  mutate(ops_threshold = quantile(OPS, probs = 2/3, na.rm = TRUE),
-         signal = if_else(OPS >= ops_threshold, 1, 0, missing = 0)) %>% 
+  # < 1/3 percentile is bad, > 2/3 is good, between is meh
+  mutate(ops_threshold_high = quantile(OPS, probs = 2/3, na.rm = TRUE),
+         ops_threshold_low = quantile(OPS, probs = 1/3, na.rm = TRUE),
+         signal = case_when(OPS >= ops_threshold_high ~ 1,
+                            OPS <= ops_threshold_low ~ -1,
+                            TRUE ~ 0)) %>% 
   ungroup() %>% 
   arrange(Name, Year, Level) %>% # makes it easier to get lowest-level signal (our signal)
   group_by(Name, Year) %>% 
@@ -124,8 +128,11 @@ pitch_performance <- pitch %>%
   # creating ERA threshold for a good signal
   # ** if altering this, because lower is better, the quantiles are reversed **
   # i.e., the 75th percentile would actually be probs = 1/4
-  mutate(era_threshold = quantile(ERA, probs = 1/3, na.rm = TRUE),
-         signal = if_else(ERA <= era_threshold, 1, 0, missing = 0)) %>% 
+  mutate(era_threshold_low = quantile(ERA, probs = 1/3, na.rm = TRUE),
+         era_threshold_high = quantile(ERA, probs = 2/3, na.rm = TRUE),
+         signal = case_when(ERA <= era_threshold_low ~ 1,
+                            ERA >= era_threshold_high ~ -1,
+                            TRUE ~ 0)) %>% 
   ungroup() %>% 
   arrange(Name, Year, Level) %>% # makes it easier to get lowest-level signal (our signal)
   group_by(Name, Year) %>% 
