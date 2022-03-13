@@ -86,3 +86,60 @@ ggplot(exit_signals_revised_pct, aes(x = yr_unique, y = 100 * pct,
   scale_x_continuous(breaks = seq(0, 10, by = 1)) +
   scale_y_continuous(breaks = seq(0, 50, by = 5)) +
   theme_classic()
+
+# Code to get names of players who had strong signals in first 3 seasons...
+# but still ended up exiting the system anyways
+
+yr3_strong_exits <- performance %>% 
+  filter(yr_unique <= 3) %>% 
+  group_by(Name) %>% 
+  mutate(cum_strong = sum(signal)) %>% 
+  ungroup() %>% 
+  filter(yr_unique == 3, cum_strong == 3, exit == 1) %>% 
+  select(Name) %>% 
+  pull()
+
+# What percent of players who have strong signals in first 3 seasons...
+# end up making the major leagues?
+
+strong_start_high_level <- performance %>% 
+  group_by(Name) %>% 
+  mutate(max_level = max(level_high)) %>% 
+  ungroup() %>% 
+  filter(yr_unique <= 3) %>% 
+  group_by(Name) %>% 
+  mutate(cum_strong = sum(signal)) %>% 
+  ungroup() %>% 
+  filter(yr_unique == 3, cum_strong == 3) %>% 
+  group_by(max_level) %>% 
+  summarize(ct = n_distinct(Name)) %>% 
+  mutate(pct = ct / sum(ct))
+
+# What are the expected number of seasons in each level?
+
+exp_yrs_total <- performance %>% 
+  group_by(Name) %>% 
+  mutate(total_yrs = max(yr_unique)) %>% 
+  ungroup() %>% 
+  group_by(Name, level_low) %>% 
+  summarize(yrs = n_distinct(yr_unique),
+            total_yrs = total_yrs) %>% 
+  unique() %>% 
+  complete(Name,
+           level_low = 1:7,
+           fill = list(yrs = 0)) %>% 
+  group_by(Name) %>% 
+  fill(total_yrs) %>% 
+  ungroup() %>% 
+  unique() %>% 
+  group_by(Name) %>% 
+  mutate(total_yrs = replace_na(total_yrs, max(total_yrs, na.rm = T))) %>% 
+  ungroup() %>% 
+  unique()
+
+exp_yrs_total %>% 
+  group_by(level_low) %>% 
+  summarize(avg = mean(yrs))
+
+# If you have a good season in Rookie ball to start...
+# what are your expected number of seasons in each level?
