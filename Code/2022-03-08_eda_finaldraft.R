@@ -137,9 +137,23 @@ exp_yrs_total <- performance %>%
   ungroup() %>% 
   unique()
 
+# Table of average salaries by year to show for NPV calculations
+# salary_total / avg. for level_low = 0 is avg. annual salary
+
 exp_yrs_total %>% 
   group_by(level_low) %>% 
-  summarize(avg = mean(yrs))
+  summarize(avg = mean(yrs)) %>% 
+  ungroup() %>% 
+  add_column(salary_wk = c(rep(290, 4), 350, 502, 400000/52),
+             wks = c(rep(26, 6), 52),
+             salary_yr = salary_wk * wks) %>% 
+  mutate(salary_total = avg * salary_yr) %>% 
+  add_row(level_low = 0,
+          avg = sum(.$avg),
+          salary_wk = 0,
+          wks = 0,
+          salary_yr = 0,
+          salary_total = sum(.$salary_total)) 
 
 # If you have a good season in Rookie ball to start...
 # what are your expected number of seasons in each level?
