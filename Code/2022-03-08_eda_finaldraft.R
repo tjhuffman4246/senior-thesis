@@ -56,6 +56,13 @@ exit_signals_revised_pct <- performance_min20_revised %>%
             exits = sum(exit),
             pct = exits / count)
 
+exit_signals_revised_pct_no_mlb <- performance_min20_revised %>% 
+  filter(level_high != 7) %>% 
+  group_by(yr_unique, signal) %>% 
+  summarize(count = n_distinct(Name),
+            exits = sum(exit),
+            pct = exits / count)
+
 # For strictly good/bad signals
 
 ggplot(exit_signals, aes(x = yr_unique, y = 100 * pct, color = as.factor(signal))) +
@@ -84,7 +91,24 @@ ggplot(exit_signals_revised_pct, aes(x = yr_unique, y = 100 * pct,
        caption = "Levels: Rookie through MLB",
        color = "Signal") +
   scale_x_continuous(breaks = seq(0, 10, by = 1)) +
-  scale_y_continuous(breaks = seq(0, 50, by = 5)) +
+  ylim(0, 50) +
+  theme_classic()
+
+# For good, bad, and in-between signals, excluding MLB
+
+ggplot(exit_signals_revised_pct_no_mlb, aes(x = yr_unique, y = 100 * pct, 
+                                            color = as.factor(signal))) +
+  geom_line() +
+  scale_color_manual(name = "Signal",
+                     labels = c("Bad", "Average", "Good"),
+                     values = c("red", "green3", "blue")) +
+  labs(x = "Year of Career",
+       y = "Percent of Population Exiting",
+       caption = "Levels: Rookie through Triple-A",
+       color = "Signal") +
+  scale_x_continuous(breaks = seq(0, 10, by = 1)) +
+  scale_y_continuous(breaks = seq(0, 60, by = 10),
+                     limits = c(0, 60)) +
   theme_classic()
 
 # Code to get names of players who had strong signals in first 3 seasons...
@@ -145,7 +169,7 @@ exp_yrs_total %>%
   summarize(avg = mean(yrs)) %>% 
   ungroup() %>% 
   add_column(salary_wk = c(rep(290, 4), 350, 502, 400000/52),
-             wks = c(rep(26, 6), 52),
+             wks = c(rep(23, 6), 52),
              salary_yr = salary_wk * wks) %>% 
   mutate(salary_total = avg * salary_yr) %>% 
   add_row(level_low = 0,
@@ -153,7 +177,7 @@ exp_yrs_total %>%
           salary_wk = 0,
           wks = 0,
           salary_yr = 0,
-          salary_total = sum(.$salary_total)) 
+          salary_total = sum(.$salary_total))
 
 # If you have a good season in Rookie ball to start...
 # what are your expected number of seasons in each level?
